@@ -439,12 +439,12 @@ export function priorityLabels(c: College): PLabel[] {
     : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: `Medium exposure (${siteDepts} SS depts on site)`, level: "ok", tip: st!.departments.join(", ") }
     : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Medium exposure (reported)", level: "ok", tip: r!.super_speciality.summary }
     : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Low exposure", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
-    : { n: 1, key: "Super-spec", label: "Unknown — ask", level: "none", tip: "No department could be verified" };
+    : { n: 1, key: "Super-spec", label: "Missing", level: "none", tip: "No department could be verified" };
   const hs = rs?.hands_on; const neg = hs ? /observ|limited|no hands|restricted|consultant-led|clerical/i.test(hs.summary) : false;
   const ho: PLabel = hs && hs.confidence !== "Unverified" ? (neg ? { n: 2, key: "Hands-on", label: "Observation-heavy", level: "bad", tip: hs.summary } : hs.confidence === "Low" ? { n: 2, key: "Hands-on", label: "Some reports (weak)", level: "mid", tip: hs.summary } : { n: 2, key: "Hands-on", label: "Good (reported)", level: "good", tip: hs.summary })
     : r && r.hands_on.confidence !== "Unverified" ? { n: 2, key: "Hands-on", label: "Some evidence", level: "ok", tip: r.hands_on.summary }
     : (st?.anaesthesia_dept?.services.length ?? 0) > 0 ? { n: 2, key: "Hands-on", label: "Dept page only", level: "mid", tip: st!.anaesthesia_dept!.services.join(", ") }
-    : { n: 2, key: "Hands-on", label: "Unknown — ask", level: "none", tip: "Nothing online; only residents can tell you" };
+    : { n: 2, key: "Hands-on", label: "Missing", level: "none", tip: "Nothing online; only residents can tell you" };
   const flags = (rs?.red_flags ?? []).filter((f) => /suicide|harass|assault|unpaid|not paid|withh|ragging|threat culture|strike/i.test(f));
   const hc = rs?.hours_culture;
   const tx = TOXHOURS[c.id]?.toxicity; const cnt = tx?.count ?? {}; const serious = (cnt.suicides ?? 0) + (cnt.unknown_deaths ?? 0); const minor = (cnt.strikes ?? 0) + (cnt.harassment ?? 0) + (cnt.resignations ?? 0);
@@ -455,10 +455,10 @@ export function priorityLabels(c: College): PLabel[] {
     : flags.length ? { n: 3, key: "Hours", label: "Concerns reported", level: "mid", tip: flags[0] }
     : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Reported OK", level: "good", tip: hc.summary } : { n: 3, key: "Hours", label: "Mixed / thin", level: "mid", tip: hc.summary })
     : r && r.toxicity.confidence !== "Unverified" ? { n: 3, key: "Hours", label: "Some reports", level: "ok", tip: r.toxicity.summary }
-    : { n: 3, key: "Hours", label: "Unknown — ask", level: "none", tip: "No reports either way" };
-  const dnb: PLabel = isDnb(c) ? { n: 4, key: "DNB pass", label: "Not published — ask", level: "none", tip: "NBEMS publishes no institute-wise pass rate; ask for the last 3 batches" } : { n: 4, key: "DNB pass", label: "n/a (MD)", level: "ok", tip: "MD — pass rate not part of your criteria" };
+    : { n: 3, key: "Hours", label: "Missing", level: "none", tip: "No reports either way" };
+  const dnb: PLabel = isDnb(c) ? { n: 4, key: "DNB pass", label: "Missing", level: "none", tip: "NBEMS publishes no institute-wise pass rate; ask for the last 3 batches" } : { n: 4, key: "DNB pass", label: "n/a (MD)", level: "ok", tip: "MD — pass rate not part of your criteria" };
   const by = bondYears(c);
-  const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "None", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1 yr", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by} yrs`, level: "bad", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Not verified", level: "none", tip: strip(c.bond).slice(0, 120) };
+  const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "None", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1 yr", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by} yrs`, level: "bad", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Missing", level: "none", tip: strip(c.bond).slice(0, 120) };
   return [ss, ho, hr, dnb, bd];
 }
 

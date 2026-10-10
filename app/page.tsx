@@ -347,7 +347,7 @@ export default function Page() {
           </>); })()}
 
           {toxFor(c.id) && (() => { const t = toxFor(c.id)!; const block = (title: string, x: typeof t.toxicity) => (
-            <div className="param"><b>{title}</b> <ConfTag c={x.confidence} /><p>{x.cell || <span className="muted">Nothing found online — ask seniors</span>}</p>
+            <div className="param"><b>{title}</b> <ConfTag c={x.confidence} /><p>{x.cell || <span className="muted">Missing</span>}</p>
               {x.items.length > 0 && <ul className="small">{x.items.map((i, k) => <li key={k}>{i.text} <span className={"src " + i.src}>{i.src}</span>{i.url && <a href={i.url} target="_blank" rel="noopener"> ↗</a>}{i.date && <span className="muted"> · {i.date}</span>}</li>)}</ul>}
             </div>); return (<>
             <h4>Toxicity, duty hours, ICU posting — online search</h4>
