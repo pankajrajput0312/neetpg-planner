@@ -319,22 +319,6 @@ export default function Page() {
             {r && <><span>Bond (online)</span><span>{r.bond.summary} <ConfTag c={r.bond.confidence} /></span></>}
           </div>
 
-          <h4>Senior's checklist — what to know before placing this college</h4>
-          <p className="legend muted"><span className="stdot have" /> known from official data · <span className="stdot partial" /> partly known — verify · <span className="stdot ask" /> not available online — <b>you</b> ask seniors/college, then tick it</p>
-          <table className="chk-t"><tbody>
-            {seniorChecklist(c, s.cat, s.notes[c.id]).map((k) => {
-              const done = (s.verified[c.id] ?? []).includes(k.label); const st = done ? "have" : k.status;
-              return (
-                <tr key={k.label} className={"st-" + st}>
-                  <td><span className="stdot" />{k.label}</td>
-                  <td>{k.value}</td>
-                  <td className="small">{k.status === "have" ? null : (
-                    <label className="verify"><input type="checkbox" checked={done} onChange={() => up({ verified: { ...s.verified, [c.id]: done ? (s.verified[c.id] ?? []).filter((x) => x !== k.label) : [...(s.verified[c.id] ?? []), k.label] } })} />
-                      {done ? "✓ you verified" : (k.status === "partial" ? "Verify: " : "Ask: ") + k.how}</label>)}</td>
-                </tr>);
-            })}
-          </tbody></table>
-          <p className="muted small">{(() => { const rows = seniorChecklist(c, s.cat, s.notes[c.id]); const open = rows.filter((k) => k.status !== "have" && !(s.verified[c.id] ?? []).includes(k.label)).length; return open ? `${open} item(s) still to ask before you lock this college.` : "Everything checked — you can place this college with confidence."; })()}</p>
 
           {RESIDENT[c.id] && (() => { const rs = RESIDENT[c.id]; const block = (t: string, x: Resident["hands_on"]) => (
             <div className="param"><b>{t}</b> <ConfTag c={x.confidence} /><p>{x.summary}</p>
