@@ -710,24 +710,39 @@ export default function Page() {
       {tab === "sheet" && (() => {
         const cols = ["Bond", "Stipend", "Hands on", "Multispeciality exposure", "Toxicity (resignations / suicides / unknown deaths)", "Working hours / day", "ICU posting hrs / week"];
         const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-        const csv = () => { const lines = [["State", "College", "2025 closing", ...cols].map(esc).join(",")];
-          for (const st of SHEET_STATES) for (const row of SHEET.filter((x) => x.state === st)) { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null;
-            lines.push([st, row.given, c ? deepest(c, "2025", s.cat) : "", d?.bond, d?.stipend, d?.hands, d?.multi, d?.tox, d?.hours, d?.icu].map(esc).join(",")); }
+        const csv = () => { const lines = [["State", "College", "Verdict", "For you", "Chance", "2025 closing", ...cols].map(esc).join(",")];
+          for (const st of SHEET_STATES) for (const row of SHEET.filter((x) => x.state === st)) { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null; const L = c ? priorityLabels(c) : null;
+            lines.push([st, row.given, c ? verdictOf(c).verdict : "", c ? recommendation(c).rec : "", c ? chance(c, s.air, s.cat).short : "", c ? deepest(c, "2025", s.cat) : "",
+              d && `${L![4].label} — ${d.bond}`, d?.stipend, d && `${L![1].label} — ${d.hands}`, d && `${L![0].label} — ${d.multi}`, d && `${L![2].label} — ${d.tox}`, d?.hours, d?.icu].map(esc).join(",")); }
           download("shortlist-sheet.csv", lines.join("\n"), "text/csv"); };
+        const cell = (l: ReturnType<typeof priorityLabels>[number] | null, text: string) => (<td className="small cell-text">{l && <span className={"pl inline " + l.level} title={l.tip}>{l.label}</span>}{text && <div>{text}</div>}</td>);
+        const counts = { join: 0, check: 0, backup: 0, avoid: 0, na: 0 };
+        SHEET.forEach((row) => { const c = row.id ? BY_ID.get(row.id) : null; counts[(c ? verdictKey(verdictOf(c).verdict) : "na") as keyof typeof counts]++; });
         return (
           <div className="decide">
             <section className="strategy">
               <div className="row-btns" style={{ justifyContent: "space-between", alignItems: "center" }}><h2>Shortlist sheet <span className="muted">({SHEET.length} colleges)</span></h2><button onClick={csv}>Export CSV</button></div>
-              <p className="muted small">Maharashtra first, then the other states in the order given. A blank cell means nothing was verified — not that the answer is "no". "Not in app data" = the hospital had no 2024–25 allotment near your rank, so it was never researched. Click a name for the full detail panel.</p>
+              <div className="mix"><span className="tag v-join">✓ Join {counts.join}</span><span className="tag v-check">Join after checks {counts.check}</span><span className="tag v-backup">Backup only {counts.backup}</span><span className="tag v-avoid">Avoid {counts.avoid}</span><span className="tag v-na">Not assessed / not in data {counts.na}</span></div>
+              <p className="muted small">Maharashtra first, then the other states in the order given. Each evidence cell starts with a label (green good · blue acceptable · amber caution · red problem · dashed = unverified) followed by the text found. A blank cell means nothing was verified — not that the answer is "no". Click a name for the full detail panel.</p>
             </section>
-            <div className="ltwrap"><table className="lt sheet"><thead><tr><th>College</th><th className="num">2025 closing</th>{cols.map((h) => <th key={h}>{h}</th>)}</tr></thead>
+            <div className="ltwrap"><table className="lt sheet">
+              <thead>
+                <tr className="seg"><th colSpan={2}></th><th colSpan={2}>Reach</th><th colSpan={2}>Money &amp; bond</th><th colSpan={2}>Training</th><th colSpan={3}>Daily life</th></tr>
+                <tr><th>College</th><th>Verdict · for you</th><th>Chance</th><th className="num">2025 closing</th><th>Bond</th><th>Stipend</th><th>Multispeciality exposure</th><th>Hands on</th><th>Toxicity (resignations / suicides / unknown deaths)</th><th>Working hours / day</th><th>ICU posting hrs / week</th></tr>
+              </thead>
               <tbody>{SHEET_STATES.map((st) => (<Fragment key={st}>
-                <tr className="stateh"><td colSpan={2 + cols.length}>{st}</td></tr>
-                {SHEET.filter((x) => x.state === st).map((row) => { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null; return (
+                <tr className="stateh"><td colSpan={11}>{st}</td></tr>
+                {SHEET.filter((x) => x.state === st).map((row) => { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null; const L = c ? priorityLabels(c) : null; const v = c ? verdictOf(c) : null; const ch = c ? chance(c, s.air, s.cat) : null; return (
                   <tr key={row.given}>
                     <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{row.given}</b> : <b className="muted">{row.given}</b>}<small>{c ? `${shortName(c)} · ${typeLabel(c)}` : "not in app data"}</small></td>
+                    <td>{v && <><span className={"vtag v-" + verdictKey(v.verdict)} title={v.headline}>{v.verdict}</span><br /><small className={"r-" + REC_KEY[recommendation(c!).rec]} style={{ padding: "1px 6px", borderRadius: 6 }}>{recommendation(c!).rec}</small><div className="small muted" style={{ marginTop: 4, maxWidth: 220 }}>{v.headline}</div></>}</td>
+                    <td>{ch && <span className={"pill " + ch.k} title={ch.t}>{ch.short}</span>}</td>
                     <td className={"num " + (c ? cellCls(deepest(c, "2025", s.cat) || null) : "")}>{c ? fmt(deepest(c, "2025", s.cat)) : ""}</td>
-                    {d ? [d.bond, d.stipend, d.hands, d.multi, d.tox, d.hours, d.icu].map((v, i) => <td key={i} className="small cell-text">{v}</td>) : cols.map((h) => <td key={h} />)}
+                    {d ? (<>
+                      {cell(L![4], d.bond)}<td className="small cell-text">{d.stipend}</td>
+                      {cell(L![0], d.multi)}{cell(L![1], d.hands)}{cell(L![2], d.tox)}
+                      <td className="small cell-text">{d.hours}</td><td className="small cell-text">{d.icu}</td>
+                    </>) : [0, 1, 2, 3, 4, 5, 6].map((i) => <td key={i} />)}
                   </tr>); })}
               </Fragment>))}</tbody></table></div>
           </div>);

@@ -328,3 +328,6 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .pl.none { background: transparent; color: var(--muted); border-style: dashed; }
 @media (max-width: 760px) { .plabels { grid-template-columns: repeat(2, 1fr); } }
 .sheet th, .sheet td { min-width: 150px; } .sheet .cn { min-width: 200px; } .sheet .cell-text { white-space: normal; max-width: 300px; }
+.sheet thead tr.seg th { text-align: center; background: var(--surface); color: var(--accent); border-bottom: 2px solid var(--accent); letter-spacing: .08em; }
+.pl.inline { display: inline-block; margin-bottom: 4px; }
+.sheet .cell-text div { margin-top: 2px; }
