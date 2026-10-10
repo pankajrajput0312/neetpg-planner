@@ -441,11 +441,11 @@ export function priorityLabels(c: College): PLabel[] {
     : { n: 2, key: "Hands-on", label: "Unknown — ask", level: "none", tip: "Nothing online; only residents can tell you" };
   const flags = (rs?.red_flags ?? []).filter((f) => /suicide|harass|assault|unpaid|not paid|withh|ragging|threat culture|strike/i.test(f));
   const hc = rs?.hours_culture;
-  const hr: PLabel = flags.length && hc && CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours/toxicity", label: "Serious concerns", level: "bad", tip: flags[0] }
-    : flags.length ? { n: 3, key: "Hours/toxicity", label: "Concerns reported", level: "mid", tip: flags[0] }
-    : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours/toxicity", label: "Reported OK", level: "good", tip: hc.summary } : { n: 3, key: "Hours/toxicity", label: "Mixed / thin", level: "mid", tip: hc.summary })
-    : r && r.toxicity.confidence !== "Unverified" ? { n: 3, key: "Hours/toxicity", label: "Some reports", level: "ok", tip: r.toxicity.summary }
-    : { n: 3, key: "Hours/toxicity", label: "Unknown — ask", level: "none", tip: "No reports either way" };
+  const hr: PLabel = flags.length && hc && CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Serious concerns", level: "bad", tip: flags[0] }
+    : flags.length ? { n: 3, key: "Hours", label: "Concerns reported", level: "mid", tip: flags[0] }
+    : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Reported OK", level: "good", tip: hc.summary } : { n: 3, key: "Hours", label: "Mixed / thin", level: "mid", tip: hc.summary })
+    : r && r.toxicity.confidence !== "Unverified" ? { n: 3, key: "Hours", label: "Some reports", level: "ok", tip: r.toxicity.summary }
+    : { n: 3, key: "Hours", label: "Unknown — ask", level: "none", tip: "No reports either way" };
   const dnb: PLabel = isDnb(c) ? { n: 4, key: "DNB pass", label: "Not published — ask", level: "none", tip: "NBEMS publishes no institute-wise pass rate; ask for the last 3 batches" } : { n: 4, key: "DNB pass", label: "n/a (MD)", level: "ok", tip: "MD — pass rate not part of your criteria" };
   const by = bondYears(c);
   const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "None", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1 yr", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by} yrs`, level: "bad", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Not verified", level: "none", tip: strip(c.bond).slice(0, 120) };
