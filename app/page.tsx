@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   BY_ID, COLLEGES, CRITS, DEFAULT, GUIDE, PREP, PRESETS, RESEARCH, ROUNDS, ROW_HELP, ROW_LABEL, STATE_ORDER,
   beds, bondShort, chance, evidence, money, coverage, deepest, fee, firstRound, fmt, gaps, isDnb, params, place, roundClose, score,
-  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels, SHEET, SHEET_STATES, sheetRow, toxFor, placeText, CHANCE_TEXT,
+  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels, SHEET, SHEET_STATES, sheetRow, toxFor, SHEET_SHORT, placeText, CHANCE_TEXT,
   type College, type Conf, type Crit, type Param, type Store, type Resident, type Prefs,
 } from "./lib";
 
@@ -713,7 +713,7 @@ export default function Page() {
                       {cell(L![4], d.bond, row.given + "b")}<td className="small cell-text">{d.stipend}</td>
                       {cell(L![0], d.multi, row.given + "m")}{cell(L![1], d.hands, row.given + "h")}{cell(L![2], d.tox, row.given + "t")}
                       {cell(null, d.hours, row.given + "w")}{cell(null, d.icu, row.given + "i")}
-                    </>) : (() => { const t = toxFor("given:" + row.given); return <><td /><td /><td /><td />{cell(null, t?.toxicity.cell ?? "", row.given + "t")}{cell(null, t?.hours_per_day.cell ?? "", row.given + "w")}{cell(null, t?.icu_per_week.cell ?? "", row.given + "i")}</>; })()}
+                    </>) : (() => { const t = SHEET_SHORT["given:" + row.given]; return <><td /><td /><td /><td />{cell(null, t?.tox ?? "", row.given + "t")}{cell(null, t?.hours ?? "", row.given + "w")}{cell(null, t?.icu ?? "", row.given + "i")}</>; })()}
                   </tr>); })}
               </Fragment>))}</tbody></table></div>
           </div>);

@@ -6,7 +6,7 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 APP = '/Users/pankaj/Documents/code/neetpg-planner/app/'
 L = lambda f: json.load(open(APP + f))
-C = {c['id']: c for c in L('colleges.json')['colleges']}; R = L('research.json'); O = L('official.json'); V = L('verdict.json'); S = L('superspec.json'); SITES = L('sites.json'); RES = L('resident.json'); D = L('derived.json'); SHEET = L('sheet.json'); TX = L('toxhours.json')
+C = {c['id']: c for c in L('colleges.json')['colleges']}; R = L('research.json'); O = L('official.json'); V = L('verdict.json'); S = L('superspec.json'); SITES = L('sites.json'); RES = L('resident.json'); D = L('derived.json'); SHEET = L('sheet.json'); TX = L('toxhours.json'); SH = L('sheet_short.json')
 AIR, CAT = 42000, 'OBC'
 STATES = ["Maharashtra", "Delhi", "Gujarat", "Rajasthan", "Uttar Pradesh", "Madhya Pradesh", "Himachal Pradesh", "Uttarakhand", "Punjab", "Chhattisgarh", "Jharkhand", "Karnataka", "Tamil Nadu", "Meghalaya", "Assam", "Odisha", "Manipur", "Andhra Pradesh"]
 strip = lambda h: re.sub('<[^>]+>', '', h or '')
@@ -32,8 +32,8 @@ def labels(c):
     sp = S.get(c['id']); r = R.get(c['id']); rs = RES.get(c['id']); st = SITES.get(c['id'])
     strong = [a for a in (sp or {}).get('areas', {}) if a in ('Cardiac', 'Neuro', 'Renal/Transplant', 'GI surgery', 'Onco', 'Paeds')]
     ssc = (r or {}).get('super_speciality', {}).get('confidence', 'Unverified')
-    sdep = len([d for d in (st or {}).get('departments', []) if re.search(r'cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu', d, re.I)])
-    ss = (f'High — {len(strong)} super-speciality depts, officially confirmed', 'good') if sp and len(strong) >= 3 else ('Medium — 1–2 areas, officially confirmed', 'ok') if sp else ('Medium — only the hospital website claims them', 'ok') if sdep >= 3 else ('Medium — mentioned online, not confirmed', 'ok') if ssc in ('High', 'Medium') else ('Low — little super-speciality work', 'mid') if ssc == 'Low' or sdep else ('Missing — nothing found online', 'none')
+    sdep = len([n for n in site_depts(c) if not re.search(r'Trauma|Pain|Burns|dialysis|Cardiology|Urology', n)])
+    ss = (f'High — {len(strong)} super-speciality depts, officially confirmed', 'good') if sp and len(strong) >= 3 else ('Medium — 1–2 areas, officially confirmed', 'ok') if sp else ('Medium — only the hospital website claims them', 'ok') if sdep >= 3 else ('Medium — mentioned online, not confirmed', 'ok') if ssc in ('High', 'Medium') else ('Low — little or no super-speciality work', 'mid') if ssc == 'Low' or sdep or re.search(r'ok|partial', (st or {}).get('site_status', '')) else ('Missing — nothing found online', 'none')
     hs = (rs or {}).get('hands_on'); neg = bool(hs and re.search(r'observ|limited|no hands|restricted|consultant-led|clerical', hs['summary'], re.I))
     ho = (('Poor — residents mostly watch', 'bad') if neg else ('Unclear — no reliable resident review', 'mid') if hs['confidence'] == 'Low' else ('Good — residents say they do cases', 'good')) if hs and hs['confidence'] != 'Unverified' else ('Some — reported, but not by residents', 'ok') if r and r['hands_on']['confidence'] != 'Unverified' else ('Unclear — no resident has said', 'mid') if (st or {}).get('anaesthesia_dept', {}) and (st['anaesthesia_dept'] or {}).get('services') else ('Missing — nothing found online', 'none')
     flags = [f for f in (rs or {}).get('red_flags', []) if DEAL.search(f)]; hc = (rs or {}).get('hours_culture')
@@ -49,9 +49,15 @@ DEPTS = [(r'cardiac surg|ctvs|cvts|cardiothoracic|cardio-?thoracic', 'Heart surg
   (r'kidney transplant|renal transplant', 'Kidney transplant'), (r'liver transplant', 'Liver transplant'), (r'nephro|dialysis', 'Kidney (dialysis)'), (r'urolog', 'Urology'),
   (r'gi surg|gastro.{0,20}surg|hpb|surgical gastro', 'GI surgery'), (r'onco', 'Cancer surgery'), (r'pa?ediatric surg', "Children's surgery"), (r'nicu|picu|neonat', 'Newborn / child ICU'),
   (r'trauma|emergenc|casualty', 'Trauma & emergency'), (r'burn', 'Burns'), (r'pain', 'Pain clinic')]
+def dept_head(d):
+    h = re.split(r"[(:;'’]| - ", re.sub(r'^\[[^\]]*\]\s*', '', d))[0]
+    return '' if re.search(r'^(no|none|not|nil)\b|\bnot (listed|found|present|available|shown|mentioned|on)\b|\babsent\b|\bdoes not\b', h, re.I) else h
+def site_depts(c):
+    st = SITES.get(c['id']) or {}
+    return list(dict.fromkeys(n for rx, n in DEPTS if any(re.search(rx, dept_head(d), re.I) for d in st.get('departments', []))))
 def multi_text(c):
     sp = S.get(c['id']); st = SITES.get(c['id']) or {}; r = R.get(c['id'])
-    site = list(dict.fromkeys(n for rx, n in DEPTS if any(re.search(rx, d, re.I) for d in st.get('departments', []))))
+    site = site_depts(c)
     if sp: return ', '.join(AREA_NAME.get(a, a) for a in sp['areas'])
     if site: return ', '.join(site)
     txt = r['super_speciality']['summary'] if r and r['super_speciality']['confidence'] != 'Unverified' else ''
@@ -68,6 +74,8 @@ def row(c):
     b = o.get('bond_doc'); bond = ' · '.join(x for x in [b.get('service_years'), b.get('service_bond'), b.get('leaving_penalty') and 'leaving: ' + b['leaving_penalty']] if x) if b and (b.get('service_years') or b.get('service_bond') or b.get('leaving_penalty')) else "Private DNB hospitals can't take a bond (NBEMS rule)" if c['kind'] == 'pdnb' else "None; 3 yrs' fee if you resign late" if c['kind'] == 'mhpriv' else ''
     t = TX.get(c['id'])
     if t: tox, hours, icu = ('' if re.match(r'(?i)^nothing adverse found online\.?$', t['toxicity']['cell'].strip()) else t['toxicity']['cell']) or tox, t['hours_per_day']['cell'] or hours, t['icu_per_week']['cell'] or icu
+    sh = SH.get(c['id'])
+    if sh: bond, hands, tox, hours, icu = sh['bond'], sh['hands'], sh['tox'], sh['hours'], sh['icu']
     return bond, stipend(c), hands, multi, tox, hours, icu
 CHANCE_TEXT = {'good': 'reached her rank in both 2024 & 2025', 'ok': 'reached her rank in 2025 only', 'mid': 'missed her rank by less than 10% in 2025', 'bad': 'closed well before her rank'}
 def PLACE(d):
@@ -87,7 +95,7 @@ for st in STATES:
     for s in [x for x in SHEET if x['state'] == st]:
         c = C.get(s['id']) if s['id'] else None
         if not c:
-            t = TX.get('given:' + s['given'], {}); ws.append([st, s['given'], 'No MCC anaesthesia seat in 2024–25 — nothing to judge'] + [''] * (len(head) - 6) + [t.get(k, {}).get('cell', '') for k in ('toxicity', 'hours_per_day', 'icu_per_week')]); continue
+            t = SH.get('given:' + s['given'], {}); ws.append([st, s['given'], 'No MCC anaesthesia seat in 2024–25 — nothing to judge'] + [''] * (len(head) - 6) + [t.get(k, '') for k in ('tox', 'hours', 'icu')]); continue
         v = V.get(c['id']); d = D.get(c['id'], {}); ch = chance(c); ss, ho, hr, bd = labels(c); bond, stp, hands, multi, tox, hours, icu = row(c)
         typ = {'govt': 'Government college', 'mhgovt': 'Government college (MH quota)', 'deemed': 'Deemed university (private)', 'mhpriv': 'Private college (MH quota)', 'pdnb': 'Private hospital · DNB', 'gdnb': 'Government hospital · DNB'}.get(c['kind'], c['kind'])
         ws.append([st, s['given'], c['name'].split(',')[0][:60], typ, v['verdict'] if v else 'Not assessed', PLACE(d), (v['headline'] if v else d.get('data_verdict', '')) or '', f'{ch[0]} — {CHANCE_TEXT[ch[1]]}', deep(c, '2025') or '', deep(c, '2024') or '',
@@ -125,7 +133,7 @@ G = [('Shortlist sheet — NEET-PG 2026 Anaesthesia, AIR ~42,000, OBC-NCL', '', 
  ('', 'Medium — 1–2 areas, officially confirmed', 'Official super-speciality training runs here, but in only 1–2 areas (listed under the label).'),
  ('', 'Medium — only the hospital website claims them', 'The hospital website lists super-speciality departments (named in the detail); no official training course confirms them.'),
  ('', 'Medium — mentioned online, not confirmed', 'News or review sites mention it.'),
- ('', 'Low — little super-speciality work', 'Very little found.'),
+ ('', 'Low — little or no super-speciality work', "The hospital's website was checked and shows few or no super-speciality departments."),
  ('Hands on', 'Good — residents say they do cases', 'Two or more resident / news accounts say PGs give anaesthesia themselves.'),
  ('', 'Some — reported, but not by residents', 'A website or review says PGs do cases; no resident confirms it.'),
  ('', 'Unclear — no reliable resident review', 'No one who trained there has written about it; only the hospital or review sites say anything. Searched: Reddit, Quora, review sites, Google.'),

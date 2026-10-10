@@ -439,12 +439,12 @@ export function priorityLabels(c: College): PLabel[] {
   const sp = SUPERSPEC[c.id]; const r = RESEARCH[c.id]; const rs = RESIDENT[c.id]; const st = SITES[c.id];
   const strong = sp ? Object.keys(sp.areas).filter((a) => ["Cardiac", "Neuro", "Renal/Transplant", "GI surgery", "Onco", "Paeds"].includes(a)) : [];
   const ssc = r?.super_speciality.confidence ?? "Unverified";
-  const siteDepts = st ? st.departments.filter((d) => /cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu/i.test(d)).length : 0;
+  const siteDepts = siteDeptList(c).filter((n) => !/Trauma|Pain|Burns|dialysis|Cardiology|Urology/.test(n)).length;  // super-speciality surgical / ICU areas only
   const ss: PLabel = sp && strong.length >= 3 ? { n: 1, key: "Super-spec", label: `High — ${strong.length} super-speciality depts, officially confirmed`, level: "good", tip: `DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025)` }
     : sp ? { n: 1, key: "Super-spec", label: "Medium — 1–2 areas, officially confirmed", level: "ok", tip: "Official courses in fewer than 3 core areas" }
     : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: "Medium — only the hospital website claims them", level: "ok", tip: st!.departments.join(", ") }
     : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Medium — mentioned online, not confirmed", level: "ok", tip: r!.super_speciality.summary }
-    : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Low — little super-speciality work", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
+    : ssc === "Low" || siteDepts > 0 || (st && /ok|partial/.test(st.site_status)) ? { n: 1, key: "Super-spec", label: "Low — little or no super-speciality work", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
     : { n: 1, key: "Super-spec", label: "Missing — nothing found online", level: "none", tip: "No department could be verified" };
   const hs = rs?.hands_on; const neg = hs ? /observ|limited|no hands|restricted|consultant-led|clerical/i.test(hs.summary) : false;
   const ho: PLabel = hs && hs.confidence !== "Unverified" ? (neg ? { n: 2, key: "Hands-on", label: "Poor — residents mostly watch", level: "bad", tip: hs.summary } : hs.confidence === "Low" ? { n: 2, key: "Hands-on", label: "Unclear — no reliable resident review", level: "mid", tip: hs.summary } : { n: 2, key: "Hands-on", label: "Good — residents say they do cases", level: "good", tip: hs.summary })
@@ -471,6 +471,7 @@ export function priorityLabels(c: College): PLabel[] {
 
 // ---------- Sheet tab: her friend's list with 7 columns, blank when nothing is verified ----------
 import sheetData from "./sheet.json";
+import sheetShortData from "./sheet_short.json";
 export const SHEET = sheetData as { state: string; given: string; id: string | null; matched: string | null }[];
 export const SHEET_STATES = ["Maharashtra", "Delhi", "Gujarat", "Rajasthan", "Uttar Pradesh", "Madhya Pradesh", "Himachal Pradesh", "Uttarakhand", "Punjab", "Chhattisgarh", "Jharkhand", "Karnataka", "Tamil Nadu", "Meghalaya", "Assam", "Odisha", "Manipur", "Andhra Pradesh"];
 const HOURS = /\b\d{1,2}(?:\s*[-–to]+\s*\d{1,2})?\s*(?:h\b|hr|hrs|hour)[^.;]{0,60}/gi;
@@ -481,14 +482,19 @@ const DEPTS: [RegExp, string][] = [[/cardiac surg|ctvs|cvts|cardiothoracic|cardi
   [/kidney transplant|renal transplant/i, "Kidney transplant"], [/liver transplant/i, "Liver transplant"], [/nephro|dialysis/i, "Kidney (dialysis)"], [/urolog/i, "Urology"],
   [/gi surg|gastro.{0,20}surg|hpb|surgical gastro/i, "GI surgery"], [/onco/i, "Cancer surgery"], [/p(a)?ediatric surg/i, "Children's surgery"], [/nicu|picu|neonat/i, "Newborn / child ICU"],
   [/trauma|emergenc|casualty/i, "Trauma & emergency"], [/burn/i, "Burns"], [/pain/i, "Pain clinic"]];
+// The department name a website note starts with ("kidney transplant (page listed; liver not listed)" -> "kidney transplant"); "" for notes saying something is absent
+const deptHead = (d: string) => { const h = d.replace(/^\[[^\]]*\]\s*/, "").split(/[(:;'’]| - /)[0]; return /^(no|none|not|nil)\b|\bnot (listed|found|present|available|shown|mentioned|on)\b|\babsent\b|\bdoes not\b/i.test(h) ? "" : h; };
+export const siteDeptList = (c: College) => [...new Set(DEPTS.filter(([re]) => (SITES[c.id]?.departments ?? []).some((d) => re.test(deptHead(d)))).map(([, n]) => n))];
 export function multiText(c: College) {
   const sp = SUPERSPEC[c.id]; const st = SITES[c.id]; const r = RESEARCH[c.id];
-  const site = [...new Set(DEPTS.filter(([re]) => (st?.departments ?? []).some((d) => re.test(d))).map(([, n]) => n))];
+  const site = siteDeptList(c);
   if (sp) return Object.keys(sp.areas).map((a) => AREA_NAME[a] ?? a).join(", ");
   if (site.length) return site.join(", ");
   const txt = r && r.super_speciality.confidence !== "Unverified" ? r.super_speciality.summary : "";
   return [...new Set(DEPTS.filter(([re]) => re.test(txt)).map(([, n]) => n))].join(", ");
 }
+// Short, facts-only cell text for the shortlist (full text stays in the detail panel); key = college id or "given:<name>"
+export const SHEET_SHORT = sheetShortData as Record<string, { hands: string; tox: string; hours: string; icu: string; bond: string }>;
 export function sheetRow(c: College) {
   const rs = RESIDENT[c.id]; const r = RESEARCH[c.id]; const sp = SUPERSPEC[c.id]; const st = SITES[c.id];
   const hands = rs && rs.hands_on.confidence !== "Unverified" ? rs.hands_on.summary : r && r.hands_on.confidence !== "Unverified" ? r.hands_on.summary : "";
@@ -500,6 +506,7 @@ export function sheetRow(c: College) {
   const icuText = [hoursText, st?.anaesthesia_dept?.notes ?? "", st?.academics ?? ""].join(" ");
   const icu = (icuText.match(/[^.]{0,60}\bICU\b[^.]{0,80}(?:week|posting|rotation|month)[^.]{0,40}/i) ?? [""])[0].trim();
   const b = OFFICIAL[c.id]?.bond_doc; const bond = b && (b.service_years || b.service_bond || b.leaving_penalty) ? [b.service_years, b.service_bond, b.leaving_penalty && `leaving: ${b.leaving_penalty}`].filter(Boolean).join(" · ") : c.kind === "pdnb" ? "Private DNB hospitals can't take a bond (NBEMS rule)" : c.kind === "mhpriv" ? "None; 3 yrs' fee if you resign late" : "";
-  const t = TOXHOURS[c.id];
+  const t = TOXHOURS[c.id]; const sh = SHEET_SHORT[c.id];
+  if (sh) return { bond: sh.bond, stipend: money(stipend(c)) ?? "", hands: sh.hands, multi, tox: sh.tox, hours: sh.hours, icu: sh.icu };
   return { bond, stipend: money(stipend(c)) ?? "", hands, multi, tox: t?.toxicity.cell || tox, hours: t?.hours_per_day.cell || hours, icu: t?.icu_per_week.cell || icu };
 }
