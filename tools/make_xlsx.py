@@ -44,10 +44,21 @@ def labels(c):
     return ss, ho, hr, bd
 HOURS = re.compile(r'\b\d{1,2}(?:\s*[-–to]+\s*\d{1,2})?\s*(?:h\b|hr|hrs|hour)[^.;]{0,60}', re.I)
 TOX = re.compile(r'suicide|death|died|resign|strike|harass|unpaid|not paid|withh|protest|ragging|threat culture|assault', re.I)
+AREA_NAME = {'Cardiac': 'Heart', 'Neuro': 'Brain & spine', 'Renal/Transplant': 'Kidney & transplant', 'GI surgery': 'Stomach & liver (GI) surgery', 'Onco': 'Cancer', 'Paeds': "Children's surgery", 'Critical care': 'Critical care (ICU)', 'Vascular/Thoracic': 'Blood vessel & chest surgery'}
+DEPTS = [(r'cardiac surg|ctvs|cvts|cardiothoracic|cardio-?thoracic', 'Heart surgery'), (r'cardiolog|cath', 'Cardiology'), (r'neurosurg|neuro surg|spine surg', 'Brain & spine surgery'),
+  (r'kidney transplant|renal transplant', 'Kidney transplant'), (r'liver transplant', 'Liver transplant'), (r'nephro|dialysis', 'Kidney (dialysis)'), (r'urolog', 'Urology'),
+  (r'gi surg|gastro.{0,20}surg|hpb|surgical gastro', 'GI surgery'), (r'onco', 'Cancer surgery'), (r'pa?ediatric surg', "Children's surgery"), (r'nicu|picu|neonat', 'Newborn / child ICU'),
+  (r'trauma|emergenc|casualty', 'Trauma & emergency'), (r'burn', 'Burns'), (r'pain', 'Pain clinic')]
+def multi_text(c):
+    sp = S.get(c['id']); st = SITES.get(c['id']) or {}; r = R.get(c['id'])
+    site = list(dict.fromkeys(n for rx, n in DEPTS if any(re.search(rx, d, re.I) for d in st.get('departments', []))))
+    if sp: return 'Officially confirmed: ' + ', '.join(AREA_NAME.get(a, a) for a in sp['areas']) + '.' + (' Website also lists: ' + ', '.join(site) + '.' if site else '')
+    if site: return 'Hospital website lists: ' + ', '.join(site) + '. Not officially confirmed.'
+    return r['super_speciality']['summary'] if r and r['super_speciality']['confidence'] != 'Unverified' else ''
 def row(c):
     rs = RES.get(c['id']); r = R.get(c['id']); sp = S.get(c['id']); st = SITES.get(c['id']); o = O.get(c['id'], {})
     hands = rs['hands_on']['summary'] if rs and rs['hands_on']['confidence'] != 'Unverified' else r['hands_on']['summary'] if r and r['hands_on']['confidence'] != 'Unverified' else ''
-    multi = 'Official courses: ' + ', '.join(sp['areas']) if sp else 'Site lists: ' + ', '.join(st['departments'][:8]) if st and st['departments'] else r['super_speciality']['summary'] if r and r['super_speciality']['confidence'] != 'Unverified' else ''
+    multi = multi_text(c)
     tox = ' · '.join(dict.fromkeys([t for t in (rs or {}).get('red_flags', []) + [x['text'] for x in (rs or {}).get('cons', [])] + [x['text'] for x in (r or {}).get('cons', [])] if TOX.search(t)]).keys())[:400]
     htxt = ' '.join([(rs or {}).get('hours_culture', {}).get('summary', '')] + [i['text'] for i in (rs or {}).get('hours_culture', {}).get('items', [])] + [(rs or {}).get('hands_on', {}).get('summary', '')])
     hours = ' · '.join(dict.fromkeys(m.strip() for m in HOURS.findall(htxt)).keys())[:200]

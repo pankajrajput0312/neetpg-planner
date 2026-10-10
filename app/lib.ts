@@ -475,10 +475,23 @@ export const SHEET = sheetData as { state: string; given: string; id: string | n
 export const SHEET_STATES = ["Maharashtra", "Delhi", "Gujarat", "Rajasthan", "Uttar Pradesh", "Madhya Pradesh", "Himachal Pradesh", "Uttarakhand", "Punjab", "Chhattisgarh", "Jharkhand", "Karnataka", "Tamil Nadu", "Meghalaya", "Assam", "Odisha", "Manipur", "Andhra Pradesh"];
 const HOURS = /\b\d{1,2}(?:\s*[-–to]+\s*\d{1,2})?\s*(?:h\b|hr|hrs|hour)[^.;]{0,60}/gi;
 const TOX = /suicide|death|died|resign|strike|harass|unpaid|not paid|withh|protest|ragging|threat culture|assault/i;
+// Multispeciality cell in plain words: official super-speciality training first, then what only the hospital website claims.
+const AREA_NAME: Record<string, string> = { "Cardiac": "Heart", "Neuro": "Brain & spine", "Renal/Transplant": "Kidney & transplant", "GI surgery": "Stomach & liver (GI) surgery", "Onco": "Cancer", "Paeds": "Children's surgery", "Critical care": "Critical care (ICU)", "Vascular/Thoracic": "Blood vessel & chest surgery" };
+const DEPTS: [RegExp, string][] = [[/cardiac surg|ctvs|cvts|cardiothoracic|cardio-?thoracic/i, "Heart surgery"], [/cardiolog|cath/i, "Cardiology"], [/neurosurg|neuro surg|spine surg/i, "Brain & spine surgery"],
+  [/kidney transplant|renal transplant/i, "Kidney transplant"], [/liver transplant/i, "Liver transplant"], [/nephro|dialysis/i, "Kidney (dialysis)"], [/urolog/i, "Urology"],
+  [/gi surg|gastro.{0,20}surg|hpb|surgical gastro/i, "GI surgery"], [/onco/i, "Cancer surgery"], [/p(a)?ediatric surg/i, "Children's surgery"], [/nicu|picu|neonat/i, "Newborn / child ICU"],
+  [/trauma|emergenc|casualty/i, "Trauma & emergency"], [/burn/i, "Burns"], [/pain/i, "Pain clinic"]];
+export function multiText(c: College) {
+  const sp = SUPERSPEC[c.id]; const st = SITES[c.id]; const r = RESEARCH[c.id];
+  const site = [...new Set(DEPTS.filter(([re]) => (st?.departments ?? []).some((d) => re.test(d))).map(([, n]) => n))];
+  if (sp) return `Officially confirmed: ${Object.keys(sp.areas).map((a) => AREA_NAME[a] ?? a).join(", ")}.` + (site.length ? ` Website also lists: ${site.join(", ")}.` : "");
+  if (site.length) return `Hospital website lists: ${site.join(", ")}. Not officially confirmed.`;
+  return r && r.super_speciality.confidence !== "Unverified" ? r.super_speciality.summary : "";
+}
 export function sheetRow(c: College) {
   const rs = RESIDENT[c.id]; const r = RESEARCH[c.id]; const sp = SUPERSPEC[c.id]; const st = SITES[c.id];
   const hands = rs && rs.hands_on.confidence !== "Unverified" ? rs.hands_on.summary : r && r.hands_on.confidence !== "Unverified" ? r.hands_on.summary : "";
-  const multi = sp ? `Official courses: ${Object.keys(sp.areas).join(", ")}` : st && st.departments.length ? `Site lists: ${st.departments.slice(0, 8).join(", ")}` : r && r.super_speciality.confidence !== "Unverified" ? r.super_speciality.summary : "";
+  const multi = multiText(c);
   const toxItems = [...(rs?.red_flags ?? []), ...(rs?.cons ?? []).map((x) => x.text), ...(r?.cons ?? []).map((x) => x.text)].filter((t) => TOX.test(t));
   const tox = [...new Set(toxItems)].slice(0, 3).join(" · ");
   const hoursText = [rs?.hours_culture.summary ?? "", ...(rs?.hours_culture.items ?? []).map((i) => i.text), rs?.hands_on.summary ?? ""].join(" ");
