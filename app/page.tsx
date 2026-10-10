@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   BY_ID, COLLEGES, CRITS, DEFAULT, GUIDE, PREP, PRESETS, RESEARCH, ROUNDS, ROW_HELP, ROW_LABEL, STATE_ORDER,
   beds, bondShort, chance, evidence, money, coverage, deepest, fee, firstRound, fmt, gaps, isDnb, params, place, roundClose, score,
-  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank,
+  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels,
   type College, type Conf, type Crit, type Param, type Store, type Resident, type Prefs,
 } from "./lib";
 
@@ -220,6 +220,7 @@ export default function Page() {
           </div>
           {v.verdict !== "Not assessed" ? <p className="headline">{v.headline}</p> : <p className="headline muted">{recommendation(c).data_verdict}</p>}
           <p className={"foryou r-" + REC_KEY[recommendation(c).rec]}><b>For you: {recommendation(c).rec}</b> — {recommendation(c).rec_why}</p>
+          <div className="plabels">{priorityLabels(c).map((l) => <span key={l.n} className={"pl " + l.level} title={`${l.n}. ${l.key}: ${l.tip}`}><small>{l.n} {l.key}</small>{l.label}</span>)}</div>
         </div>
         {stripView(c)}
         {facts(c)}
@@ -247,6 +248,7 @@ export default function Page() {
           <p className="muted">{c.name}</p>
           <p><span className={"tag " + ch.k}>{ch.t}</span> <span className="type">{c.kindLabel}</span></p>
           {dots(c)}
+          <div className="plabels">{priorityLabels(c).map((l) => <span key={l.n} className={"pl " + l.level} title={l.tip}><small>{l.n} {l.key}</small>{l.label}</span>)}</div>
           <div className="row-btns">
             <button className={"primary" + (inList.has(c.id) ? " added" : "")} onClick={() => toggle(c.id)}>{inList.has(c.id) ? `#${list.items.indexOf(c.id) + 1} in “${list.name}” ✓` : `+ Add to “${list.name}”`}</button>
             <button onClick={() => toggleCompare(c.id)}>{s.compare.includes(c.id) ? "✓ In compare" : "Add to compare"}</button>
@@ -479,6 +481,7 @@ export default function Page() {
             <tbody>
               <tr><th>Verdict</th>{cmp.map((c) => { const v = verdictOf(c); return <td key={c.id} className={"v-" + verdictKey(v.verdict)}><b>{v.verdict}</b><br /><small>{v.headline}</small></td>; })}</tr>
               <tr><th>For you</th>{cmp.map((c) => { const d = recommendation(c); return <td key={c.id} className={"r-" + REC_KEY[d.rec]}><b>{d.rec}</b><br /><small>{d.rec_why}</small></td>; })}</tr>
+              <tr><th>5 priorities</th>{cmp.map((c) => <td key={c.id}><div className="plabels">{priorityLabels(c).map((l) => <span key={l.n} className={"pl " + l.level} title={l.tip}><small>{l.n} {l.key}</small>{l.label}</span>)}</div></td>)}</tr>
               <tr><th>Seat type</th>{cmp.map((c) => <td key={c.id}>{c.kindLabel}</td>)}</tr>
               <tr><th>Chance</th>{cmp.map((c) => { const ch = chance(c, s.air, s.cat); return <td key={c.id}><span className={"pill " + ch.k}>{ch.short}</span><br /><small>{ch.t}</small></td>; })}</tr>
               {ROUNDS.map((r, i) => <tr key={r}><th>2025 {r}</th>{cmp.map((c) => { const v = roundClose(c, "2025", s.cat)[i]; return <td key={c.id} className={cellCls(v)}>{fmt(v)}</td>; })}</tr>)}
@@ -611,7 +614,7 @@ export default function Page() {
         </div>
         {listView === "rows" && list.items.length > 0 && (
           <div className="ltwrap"><table className="lt">
-            <thead><tr><th></th><th>#</th><th>College</th><th>Type</th><th>Verdict</th><th>Chance</th><th className="num">2025 R1</th><th className="num">R2</th><th className="num">R3</th><th className="num">Stray</th><th>Fee / yr</th><th>Stipend</th><th>Bond</th><th className="num">Score</th><th></th></tr></thead>
+            <thead><tr><th></th><th>#</th><th>College</th><th>Type</th><th>Verdict</th><th>Chance</th><th>5 priorities</th><th className="num">2025 R1</th><th className="num">R2</th><th className="num">R3</th><th className="num">Stray</th><th>Fee / yr</th><th>Stipend</th><th>Bond</th><th className="num">Score</th><th></th></tr></thead>
             <tbody>
               {list.items.map((id, i) => {
                 const c = BY_ID.get(id); if (!c) return null;
@@ -619,7 +622,7 @@ export default function Page() {
                 if ((lf.state.length && !lf.state.includes(c.state)) || (lf.kind.length && !lf.kind.includes(c.kind)) || (lf.verdict.length && !lf.verdict.includes(v.verdict)) || (lf.chance.length && !lf.chance.includes(ch.k)) || (lf.min && deepest(c, "2025", s.cat) < +lf.min) || (lf.max && deepest(c, "2025", s.cat) > +lf.max)) return null;
                 const ex = excludedBy(c, prefs);
                 return (<Fragment key={id}>
-                  {prev !== c.state && <tr className="stateh"><td colSpan={15}>{c.state}</td></tr>}
+                  {prev !== c.state && <tr className="stateh"><td colSpan={16}>{c.state}</td></tr>}
                   <tr className={(drag === i ? "dragging" : "") + (over === i && drag !== null && drag !== i ? " over" : "")} draggable
                     onDragStart={() => setDrag(i)} onDragOver={(e) => { e.preventDefault(); setOver(i); }} onDragLeave={() => setOver(null)}
                     onDrop={() => { if (drag !== null) move(drag, i); setDrag(null); setOver(null); }} onDragEnd={() => { setDrag(null); setOver(null); }}>
@@ -629,6 +632,7 @@ export default function Page() {
                     <td className="small">{typeLabel(c)}</td>
                     <td><span className={"vtag v-" + verdictKey(v.verdict)} title={v.headline}>{v.verdict}</span></td>
                     <td><span className={"pill " + ch.k} title={ch.t}>{ch.short}</span></td>
+                    <td><div className="plabels mini">{priorityLabels(c).map((l) => <span key={l.n} className={"pl " + l.level} title={`${l.n}. ${l.key}: ${l.tip}`}>{l.n}·{l.label}</span>)}</div></td>
                     {roundClose(c, "2025", s.cat).map((x, j) => <td key={j} className={"num " + cellCls(x)}>{fmt(x)}</td>)}
                     <td title={fee(c) ?? ""}>{money(fee(c)) ?? "?"}</td>
                     <td title={stipend(c) ?? ""}>{money(stipend(c)) ?? "?"}</td>
@@ -675,7 +679,7 @@ export default function Page() {
             <div className="ltwrap"><table className="lt airank"><thead><tr><th>#</th><th>College</th><th>Tier</th><th className="num">Score</th><th>Why it is here</th><th>Check before locking</th></tr></thead><tbody>
               {recs.map((r, i) => { const c = BY_ID.get(r.id)!; const ch = chance(c, s.air, s.cat); return (
                 <tr key={r.id}><td className="num"><b>{i + 1}</b></td>
-                  <td className="cn"><b onClick={() => setOpen(r.id)}>{shortName(c)}</b><small>{[place(c), c.state].filter(Boolean).join(", ")} · {typeLabel(c)}</small><br /><span className={"tag " + ch.k}>{ch.short}</span> <span className={"tag v-" + verdictKey(verdictOf(c).verdict)}>{verdictOf(c).verdict}</span></td>
+                  <td className="cn"><b onClick={() => setOpen(r.id)}>{shortName(c)}</b><small>{[place(c), c.state].filter(Boolean).join(", ")} · {typeLabel(c)}</small><br /><span className={"tag " + ch.k}>{ch.short}</span> <span className={"tag v-" + verdictKey(verdictOf(c).verdict)}>{verdictOf(c).verdict}</span><div className="plabels mini">{priorityLabels(c).map((l) => <span key={l.n} className={"pl " + l.level} title={`${l.n}. ${l.key}: ${l.tip}`}>{l.n}·{l.label}</span>)}</div></td>
                   <td><span className={"tag " + (r.tier === "Safe" ? "good" : r.tier === "Core" ? "ok" : "mid")}>{r.tier}</span></td>
                   <td className="num">{r.score}</td>
                   <td className="small"><ul className="pros">{r.why.map((w, k) => <li key={k}>{w}</li>)}</ul></td>

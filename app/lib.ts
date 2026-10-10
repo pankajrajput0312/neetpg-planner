@@ -420,3 +420,34 @@ export function aiRank(counselling: string, air: number, cat: string, p: Prefs, 
   return out.sort((a, b) => b.score - a.score || STATE_ORDER.indexOf(BY_ID.get(a.id)!.state) - STATE_ORDER.indexOf(BY_ID.get(b.id)!.state));
 }
 const lakh = (n: number) => (n >= 1e7 ? `₹${(n / 1e7).toFixed(2)} Cr` : `₹${(n / 1e5).toFixed(0)} L`);
+
+// ---------- One label per priority, for every college ----------
+export type PLabel = { n: number; key: string; label: string; level: "good" | "ok" | "mid" | "bad" | "none"; tip: string };
+export function priorityLabels(c: College): PLabel[] {
+  const sp = SUPERSPEC[c.id]; const r = RESEARCH[c.id]; const rs = RESIDENT[c.id]; const st = SITES[c.id];
+  const strong = sp ? Object.keys(sp.areas).filter((a) => ["Cardiac", "Neuro", "Renal/Transplant", "GI surgery", "Onco", "Paeds"].includes(a)) : [];
+  const ssc = r?.super_speciality.confidence ?? "Unverified";
+  const siteDepts = st ? st.departments.filter((d) => /cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu/i.test(d)).length : 0;
+  const ss: PLabel = sp && strong.length >= 3 ? { n: 1, key: "Super-spec", label: "Strong (official)", level: "good", tip: `DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025)` }
+    : sp ? { n: 1, key: "Super-spec", label: `Some (official: ${Object.keys(sp.areas).join(", ")})`, level: "ok", tip: "Official courses in fewer than 3 core areas" }
+    : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: "Claimed on site", level: "ok", tip: st!.departments.join(", ") }
+    : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Claimed", level: "ok", tip: r!.super_speciality.summary }
+    : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Weak / unclear", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
+    : { n: 1, key: "Super-spec", label: "Unknown — ask", level: "none", tip: "No department could be verified" };
+  const hs = rs?.hands_on; const neg = hs ? /observ|limited|no hands|restricted|consultant-led|clerical/i.test(hs.summary) : false;
+  const ho: PLabel = hs && hs.confidence !== "Unverified" ? (neg ? { n: 2, key: "Hands-on", label: "Observation-heavy", level: "bad", tip: hs.summary } : hs.confidence === "Low" ? { n: 2, key: "Hands-on", label: "Some reports (weak)", level: "mid", tip: hs.summary } : { n: 2, key: "Hands-on", label: "Good (reported)", level: "good", tip: hs.summary })
+    : r && r.hands_on.confidence !== "Unverified" ? { n: 2, key: "Hands-on", label: "Some evidence", level: "ok", tip: r.hands_on.summary }
+    : (st?.anaesthesia_dept?.services.length ?? 0) > 0 ? { n: 2, key: "Hands-on", label: "Dept page only", level: "mid", tip: st!.anaesthesia_dept!.services.join(", ") }
+    : { n: 2, key: "Hands-on", label: "Unknown — ask", level: "none", tip: "Nothing online; only residents can tell you" };
+  const flags = (rs?.red_flags ?? []).filter((f) => /suicide|harass|assault|unpaid|not paid|withh|ragging|threat culture|strike/i.test(f));
+  const hc = rs?.hours_culture;
+  const hr: PLabel = flags.length && hc && CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours/toxicity", label: "Serious concerns", level: "bad", tip: flags[0] }
+    : flags.length ? { n: 3, key: "Hours/toxicity", label: "Concerns reported", level: "mid", tip: flags[0] }
+    : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours/toxicity", label: "Reported OK", level: "good", tip: hc.summary } : { n: 3, key: "Hours/toxicity", label: "Mixed / thin", level: "mid", tip: hc.summary })
+    : r && r.toxicity.confidence !== "Unverified" ? { n: 3, key: "Hours/toxicity", label: "Some reports", level: "ok", tip: r.toxicity.summary }
+    : { n: 3, key: "Hours/toxicity", label: "Unknown — ask", level: "none", tip: "No reports either way" };
+  const dnb: PLabel = isDnb(c) ? { n: 4, key: "DNB pass", label: "Not published — ask", level: "none", tip: "NBEMS publishes no institute-wise pass rate; ask for the last 3 batches" } : { n: 4, key: "DNB pass", label: "n/a (MD)", level: "ok", tip: "MD — pass rate not part of your criteria" };
+  const by = bondYears(c);
+  const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "None", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1 yr", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by} yrs`, level: "bad", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Not verified", level: "none", tip: strip(c.bond).slice(0, 120) };
+  return [ss, ho, hr, dnb, bd];
+}
