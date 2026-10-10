@@ -89,8 +89,8 @@ for c in C:
     # 8. suggestion "for you" — only-good-enough-to-join logic
     vv = v['verdict'] if v else None
     reach = 'good' if AIR <= d24 and AIR <= d25 else 'ok' if AIR <= d25 else 'mid' if d25 and AIR <= d25 * 1.1 else 'bad'
-    if reach == 'bad': rec = ('Leave out', 'Out of reach on 2024–25 data' + (' — fine as a dream pick at the very top' if vv == 'Join, after checks' or (s and len(s['areas']) >= 4) else ''))
-    elif vv == 'Join, after checks': rec = ('Put high', 'Good enough to join; do the checks before locking')
+    if reach == 'bad': rec = ('Leave out', 'Out of reach on 2024–25 data' + (' — fine as a dream pick at the very top' if vv == 'Join' or (s and len(s['areas']) >= 4) else ''))
+    elif vv == 'Join': rec = ('Put high', 'Good enough to join — confirm the open questions before locking')
     elif vv == 'Backup only': rec = ('Backup only', 'Join only if nothing better is allotted')
     elif vv == 'Avoid': rec = ('Leave out', 'Has a deal-breaker — don\'t fill it unless you would truly join')
     else: rec = ('Backup only', 'Reachable but not researched — treat as a backup until seniors vouch for it')
