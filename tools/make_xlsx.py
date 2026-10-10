@@ -33,7 +33,7 @@ def labels(c):
     strong = [a for a in (sp or {}).get('areas', {}) if a in ('Cardiac', 'Neuro', 'Renal/Transplant', 'GI surgery', 'Onco', 'Paeds')]
     ssc = (r or {}).get('super_speciality', {}).get('confidence', 'Unverified')
     sdep = len([d for d in (st or {}).get('departments', []) if re.search(r'cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu', d, re.I)])
-    ss = (f'High — {len(strong)} super-speciality depts, officially confirmed', 'good') if sp and len(strong) >= 3 else (f"Medium — only {', '.join(sp['areas'])} (officially confirmed)", 'ok') if sp else (f"Medium — {sdep} super-speciality depts, hospital's own claim", 'ok') if sdep >= 3 else ('Medium — mentioned online, not confirmed', 'ok') if ssc in ('High', 'Medium') else ('Low — little super-speciality work', 'mid') if ssc == 'Low' or sdep else ('Missing — nothing found online', 'none')
+    ss = (f'High — {len(strong)} super-speciality depts, officially confirmed', 'good') if sp and len(strong) >= 3 else (f"Medium — only {', '.join(sp['areas'])} (officially confirmed)", 'ok') if sp else ('Medium — only the hospital website claims them', 'ok') if sdep >= 3 else ('Medium — mentioned online, not confirmed', 'ok') if ssc in ('High', 'Medium') else ('Low — little super-speciality work', 'mid') if ssc == 'Low' or sdep else ('Missing — nothing found online', 'none')
     hs = (rs or {}).get('hands_on'); neg = bool(hs and re.search(r'observ|limited|no hands|restricted|consultant-led|clerical', hs['summary'], re.I))
     ho = (('Poor — residents mostly watch', 'bad') if neg else ('Unclear — no reliable resident review', 'mid') if hs['confidence'] == 'Low' else ('Good — residents say they do cases', 'good')) if hs and hs['confidence'] != 'Unverified' else ('Some — reported, but not by residents', 'ok') if r and r['hands_on']['confidence'] != 'Unverified' else ('Unclear — no resident has said', 'mid') if (st or {}).get('anaesthesia_dept', {}) and (st['anaesthesia_dept'] or {}).get('services') else ('Missing — nothing found online', 'none')
     flags = [f for f in (rs or {}).get('red_flags', []) if DEAL.search(f)]; hc = (rs or {}).get('hours_culture')
@@ -122,7 +122,7 @@ G = [('Shortlist sheet — NEET-PG 2026 Anaesthesia, AIR ~42,000, OBC-NCL', '', 
  ('', 'Missing — bond not confirmed', 'No official bond document found; ask the college.'),
  ('Multispeciality exposure', 'High — N super-speciality depts, officially confirmed', 'Official MCC list shows super-speciality (DM/MCh) training running in 3+ of: heart, brain, kidney/transplant, GI surgery, cancer, children. Strongest proof those OTs are busy.'),
  ('', 'Medium — only Cardiac … (officially confirmed)', 'Officially confirmed, but in only 1–2 areas (named in the label).'),
- ('', "Medium — N super-speciality depts, hospital's own claim", 'Only the hospital website says so; nothing official confirms it.'),
+ ('', 'Medium — only the hospital website claims them', 'The hospital website lists super-speciality departments (named in the detail); no official training course confirms them.'),
  ('', 'Medium — mentioned online, not confirmed', 'News or review sites mention it.'),
  ('', 'Low — little super-speciality work', 'Very little found.'),
  ('Hands on', 'Good — residents say they do cases', 'Two or more resident / news accounts say PGs give anaesthesia themselves.'),

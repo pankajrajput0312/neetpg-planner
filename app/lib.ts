@@ -442,7 +442,7 @@ export function priorityLabels(c: College): PLabel[] {
   const siteDepts = st ? st.departments.filter((d) => /cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu/i.test(d)).length : 0;
   const ss: PLabel = sp && strong.length >= 3 ? { n: 1, key: "Super-spec", label: `High — ${strong.length} super-speciality depts, officially confirmed`, level: "good", tip: `DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025)` }
     : sp ? { n: 1, key: "Super-spec", label: `Medium — only ${Object.keys(sp.areas).join(", ")} (officially confirmed)`, level: "ok", tip: "Official courses in fewer than 3 core areas" }
-    : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: `Medium — ${siteDepts} super-speciality depts, hospital's own claim`, level: "ok", tip: st!.departments.join(", ") }
+    : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: "Medium — only the hospital website claims them", level: "ok", tip: st!.departments.join(", ") }
     : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Medium — mentioned online, not confirmed", level: "ok", tip: r!.super_speciality.summary }
     : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Low — little super-speciality work", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
     : { n: 1, key: "Super-spec", label: "Missing — nothing found online", level: "none", tip: "No department could be verified" };
