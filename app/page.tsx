@@ -17,6 +17,7 @@ export default function Page() {
   const [s, setS] = useState<Store>(DEFAULT);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<"explore" | "compare" | "saved" | "lists" | "ai" | "sheet" | "decide">("sheet");
+  const [moreAll, setMoreAll] = useState(false); const [more, setMore] = useState<Record<string, boolean>>({});  // Shortlist: expanded cells
   const [onlySaved, setOnlySaved] = useState(false);
   const [q, setQ] = useState("");
   const [fState, setFState] = useState<string[]>([]);
@@ -725,13 +726,16 @@ export default function Page() {
             lines.push([st, row.given, c ? verdictOf(c).verdict : "", c ? recommendation(c).rec : "", c ? chance(c, s.air, s.cat).short : "", c ? deepest(c, "2025", s.cat) : "",
               d && `${L![4].label} — ${d.bond}`, d?.stipend, d && `${L![1].label} — ${d.hands}`, d && `${L![0].label} — ${d.multi}`, d && `${L![2].label} — ${d.tox}`, d?.hours, d?.icu].map(esc).join(",")); }
           download("shortlist-sheet.csv", lines.join("\n"), "text/csv"); };
-        const cell = (l: ReturnType<typeof priorityLabels>[number] | null, text: string) => { const t = /^nothing adverse found online\.?$/i.test(text.trim()) ? "" : text; return (<td className="small cell-text">{l && <span className={"pl inline " + l.level} title={l.tip}>{l.label}</span>}{t && <div className="clamp" title={t}>{t}</div>}</td>); };
+        const cell = (l: ReturnType<typeof priorityLabels>[number] | null, text: string, key: string) => {
+          const t = /^nothing adverse found online\.?$/i.test((text ?? "").trim()) ? "" : (text ?? ""); const long = t.length > 110; const open = moreAll || more[key];
+          return (<td className="small cell-text">{l && <span className={"pl inline " + l.level} title={l.tip}>{l.label}</span>}{t && <div className={long && !open ? "clamp" : ""}>{t}</div>}
+            {long && !moreAll && <button className="more" onClick={() => setMore({ ...more, [key]: !open })}>{open ? "Show less ▴" : "Show more ▾"}</button>}</td>); };
         const counts = { join: 0, check: 0, backup: 0, avoid: 0, na: 0 };
         SHEET.forEach((row) => { const c = row.id ? BY_ID.get(row.id) : null; counts[(c ? verdictKey(verdictOf(c).verdict) : "na") as keyof typeof counts]++; });
         return (
           <div className="decide">
             <section className="strategy">
-              <div className="row-btns" style={{ justifyContent: "space-between", alignItems: "center" }}><h2>Shortlist sheet <span className="muted">({SHEET.length} colleges)</span></h2><div className="row-btns"><a className="btn" href="/NEETPG_Anaesthesia_Shortlist_Sheet.xlsx" download>Download Excel</a><button onClick={csv}>Export CSV</button></div></div>
+              <div className="row-btns" style={{ justifyContent: "space-between", alignItems: "center" }}><h2>Shortlist sheet <span className="muted">({SHEET.length} colleges)</span></h2><div className="row-btns"><button onClick={() => { setMoreAll(!moreAll); setMore({}); }}>{moreAll ? "Show short details" : "Show full details"}</button><a className="btn" href="/NEETPG_Anaesthesia_Shortlist_Sheet.xlsx" download>Download Excel</a><button onClick={csv}>Export CSV</button></div></div>
               <div className="mix"><span className="tag v-join">✓ Join {counts.join}</span><span className="tag v-backup">Backup only {counts.backup}</span><span className="tag v-avoid">Avoid {counts.avoid}</span><span className="tag v-na">Not assessed / not in data {counts.na}</span></div>
               <p className="muted small">Maharashtra first, then the other states in the order given. Green = good · blue = OK · amber = caution · red = problem · grey = nothing found online. Blank = not found, not "no". Click a college name for sources.</p>
             </section>
@@ -749,10 +753,10 @@ export default function Page() {
                     <td>{ch && <><span className={"pill " + ch.k} title={ch.t}>{ch.short}</span><div className="small muted" style={{ marginTop: 4 }}>{CHANCE_TEXT[ch.k]}</div></>}</td>
                     <td className={"num " + (c ? cellCls(deepest(c, "2025", s.cat) || null) : "")}>{c ? fmt(deepest(c, "2025", s.cat)) : ""}</td>
                     {d ? (<>
-                      {cell(L![4], d.bond)}<td className="small cell-text">{d.stipend}</td>
-                      {cell(L![0], d.multi)}{cell(L![1], d.hands)}{cell(L![2], d.tox)}
-                      <td className="small cell-text">{d.hours}</td><td className="small cell-text">{d.icu}</td>
-                    </>) : (() => { const t = toxFor("given:" + row.given); return <><td /><td /><td /><td /><td className="small cell-text">{t?.toxicity.cell ?? ""}</td><td className="small cell-text">{t?.hours_per_day.cell ?? ""}</td><td className="small cell-text">{t?.icu_per_week.cell ?? ""}</td></>; })()}
+                      {cell(L![4], d.bond, row.given + "b")}<td className="small cell-text">{d.stipend}</td>
+                      {cell(L![0], d.multi, row.given + "m")}{cell(L![1], d.hands, row.given + "h")}{cell(L![2], d.tox, row.given + "t")}
+                      {cell(null, d.hours, row.given + "w")}{cell(null, d.icu, row.given + "i")}
+                    </>) : (() => { const t = toxFor("given:" + row.given); return <><td /><td /><td /><td />{cell(null, t?.toxicity.cell ?? "", row.given + "t")}{cell(null, t?.hours_per_day.cell ?? "", row.given + "w")}{cell(null, t?.icu_per_week.cell ?? "", row.given + "i")}</>; })()}
                   </tr>); })}
               </Fragment>))}</tbody></table></div>
           </div>);

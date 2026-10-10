@@ -1,4 +1,5 @@
 # Merge toxicity / hours / ICU findings into app/toxhours.json (keyed by college id, or "given:<name>" for sheet rows not in app data).
+# NOTE: app/toxhours.json cells were later rewritten by hand into plain English — re-running this overwrites them.
 import json, glob, os, collections
 SP = '/private/tmp/claude-501/-Users-pankaj-Documents-code-getsetyo-ai/ae80d34b-f067-4b49-8fb6-9b0ebe899157/scratchpad/tox/'
 APP = '/Users/pankaj/Documents/code/neetpg-planner/app/'

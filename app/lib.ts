@@ -447,7 +447,7 @@ export function priorityLabels(c: College): PLabel[] {
     : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Low — little super-speciality work", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
     : { n: 1, key: "Super-spec", label: "Missing — nothing found online", level: "none", tip: "No department could be verified" };
   const hs = rs?.hands_on; const neg = hs ? /observ|limited|no hands|restricted|consultant-led|clerical/i.test(hs.summary) : false;
-  const ho: PLabel = hs && hs.confidence !== "Unverified" ? (neg ? { n: 2, key: "Hands-on", label: "Poor — residents mostly watch", level: "bad", tip: hs.summary } : hs.confidence === "Low" ? { n: 2, key: "Hands-on", label: "Unclear — just one anonymous post", level: "mid", tip: hs.summary } : { n: 2, key: "Hands-on", label: "Good — residents say they do cases", level: "good", tip: hs.summary })
+  const ho: PLabel = hs && hs.confidence !== "Unverified" ? (neg ? { n: 2, key: "Hands-on", label: "Poor — residents mostly watch", level: "bad", tip: hs.summary } : hs.confidence === "Low" ? { n: 2, key: "Hands-on", label: "Unclear — no reliable resident review", level: "mid", tip: hs.summary } : { n: 2, key: "Hands-on", label: "Good — residents say they do cases", level: "good", tip: hs.summary })
     : r && r.hands_on.confidence !== "Unverified" ? { n: 2, key: "Hands-on", label: "Some — reported, but not by residents", level: "ok", tip: r.hands_on.summary }
     : (st?.anaesthesia_dept?.services.length ?? 0) > 0 ? { n: 2, key: "Hands-on", label: "Unclear — no resident has said", level: "mid", tip: st!.anaesthesia_dept!.services.join(", ") }
     : { n: 2, key: "Hands-on", label: "Missing — nothing found online", level: "none", tip: "Nothing online; only residents can tell you" };
@@ -455,11 +455,12 @@ export function priorityLabels(c: College): PLabel[] {
   const hc = rs?.hours_culture;
   const tx = TOXHOURS[c.id]?.toxicity; const cnt = tx?.count ?? {}; const serious = (cnt.suicides ?? 0) + (cnt.unknown_deaths ?? 0); const minor = (cnt.strikes ?? 0) + (cnt.harassment ?? 0) + (cnt.resignations ?? 0);
   const hr: PLabel = tx && tx.cell && serious > 0 ? { n: 3, key: "Hours", label: serious > 1 ? `Red flag — ${serious} deaths reported` : "Red flag — a death reported", level: "bad", tip: tx.cell }
-    : tx && tx.cell && minor > 0 ? { n: 3, key: "Hours", label: "Caution — strike / harassment reported", level: "mid", tip: tx.cell }
-    : tx && /nothing adverse/i.test(tx.cell) && !flags.length ? { n: 3, key: "Hours", label: "OK — nothing bad found online", level: "ok", tip: tx.cell }
+    : tx && tx.cell && minor > 0 ? { n: 3, key: "Hours", label: "Caution — complaints reported", level: "mid", tip: tx.cell }
+    : tx && /nothing (adverse|bad) found|^no resident (incident|item)|nothing about (this|residents|pgs)/i.test(tx.cell) && !flags.length ? { n: 3, key: "Hours", label: "OK — nothing bad found online", level: "ok", tip: tx.cell }
+    : tx && /toxic|harass|unpaid|not paid|strike/i.test(tx.cell) ? { n: 3, key: "Hours", label: "Caution — complaints reported", level: "mid", tip: tx.cell }
     : flags.length && hc && CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Red flag — serious resident complaints", level: "bad", tip: flags[0] }
     : flags.length ? { n: 3, key: "Hours", label: "Caution — resident complaints", level: "mid", tip: flags[0] }
-    : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Good — residents report sane hours", level: "good", tip: hc.summary } : { n: 3, key: "Hours", label: "Unclear — just one anonymous post", level: "mid", tip: hc.summary })
+    : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Good — residents report sane hours", level: "good", tip: hc.summary } : { n: 3, key: "Hours", label: "Unclear — only weak reports", level: "mid", tip: hc.summary })
     : r && r.toxicity.confidence !== "Unverified" ? { n: 3, key: "Hours", label: "Unclear — some reports, read the text", level: "ok", tip: r.toxicity.summary }
     : { n: 3, key: "Hours", label: "Missing — nothing found online", level: "none", tip: "No reports either way" };
   const dnb: PLabel = isDnb(c) ? { n: 4, key: "DNB pass", label: "Missing — NBEMS does not publish it", level: "none", tip: "NBEMS publishes no institute-wise pass rate; ask for the last 3 batches" } : { n: 4, key: "DNB pass", label: "Not needed — MD seat", level: "ok", tip: "MD — pass rate not part of your criteria" };
