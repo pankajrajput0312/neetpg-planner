@@ -331,3 +331,12 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .sheet thead tr.seg th { text-align: center; background: var(--surface); color: var(--accent); border-bottom: 2px solid var(--accent); letter-spacing: .08em; }
 .pl.inline { display: inline-block; margin-bottom: 4px; }
 .sheet .cell-text div { margin-top: 2px; }
+
+/* Shortlist sheet: scroll inside the box so both header rows stay stuck; vertical grid lines */
+.sheetwrap { max-height: calc(100vh - 140px); overflow: auto; }
+.sheet thead { position: sticky; top: 0; z-index: 3; }
+.sheet thead th { position: static; background: var(--surface-2); }
+.sheet thead tr.seg th { background: var(--surface); }
+.sheet th, .sheet td { border-right: 1px solid var(--border); }
+.sheet th:last-child, .sheet td:last-child { border-right: 0; }
+.sheet thead tr:last-child th { border-bottom: 2px solid var(--border); }

@@ -735,7 +735,7 @@ export default function Page() {
               <div className="mix"><span className="tag v-join">✓ Join {counts.join}</span><span className="tag v-backup">Backup only {counts.backup}</span><span className="tag v-avoid">Avoid {counts.avoid}</span><span className="tag v-na">Not assessed / not in data {counts.na}</span></div>
               <p className="muted small">Maharashtra first, then the other states in the order given. Each evidence cell starts with a label (green good · blue acceptable · amber caution · red problem · dashed = unverified) followed by the text found. A blank cell means nothing was verified — not that the answer is "no". Click a name for the full detail panel.</p>
             </section>
-            <div className="ltwrap"><table className="lt sheet">
+            <div className="ltwrap sheetwrap"><table className="lt sheet">
               <thead>
                 <tr className="seg"><th colSpan={2}></th><th colSpan={2}>Reach</th><th colSpan={2}>Money &amp; bond</th><th colSpan={2}>Training</th><th colSpan={3}>Daily life</th></tr>
                 <tr><th>College</th><th>Verdict · for you</th><th>Chance</th><th className="num">2025 closing</th><th>Bond</th><th>Stipend</th><th>Multispeciality exposure</th><th>Hands on</th><th>Toxicity (resignations / suicides / unknown deaths)</th><th>Working hours / day</th><th>ICU posting hrs / week</th></tr>
