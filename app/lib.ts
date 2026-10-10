@@ -441,7 +441,7 @@ export function priorityLabels(c: College): PLabel[] {
   const ssc = r?.super_speciality.confidence ?? "Unverified";
   const siteDepts = st ? st.departments.filter((d) => /cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu/i.test(d)).length : 0;
   const ss: PLabel = sp && strong.length >= 3 ? { n: 1, key: "Super-spec", label: `High — ${strong.length} super-speciality depts, officially confirmed`, level: "good", tip: `DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025)` }
-    : sp ? { n: 1, key: "Super-spec", label: `Medium — only ${Object.keys(sp.areas).join(", ")} (officially confirmed)`, level: "ok", tip: "Official courses in fewer than 3 core areas" }
+    : sp ? { n: 1, key: "Super-spec", label: "Medium — 1–2 areas, officially confirmed", level: "ok", tip: "Official courses in fewer than 3 core areas" }
     : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: "Medium — only the hospital website claims them", level: "ok", tip: st!.departments.join(", ") }
     : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Medium — mentioned online, not confirmed", level: "ok", tip: r!.super_speciality.summary }
     : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Low — little super-speciality work", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
@@ -484,9 +484,10 @@ const DEPTS: [RegExp, string][] = [[/cardiac surg|ctvs|cvts|cardiothoracic|cardi
 export function multiText(c: College) {
   const sp = SUPERSPEC[c.id]; const st = SITES[c.id]; const r = RESEARCH[c.id];
   const site = [...new Set(DEPTS.filter(([re]) => (st?.departments ?? []).some((d) => re.test(d))).map(([, n]) => n))];
-  if (sp) return `Officially confirmed: ${Object.keys(sp.areas).map((a) => AREA_NAME[a] ?? a).join(", ")}.` + (site.length ? ` Website also lists: ${site.join(", ")}.` : "");
-  if (site.length) return `Hospital website lists: ${site.join(", ")}. Not officially confirmed.`;
-  return r && r.super_speciality.confidence !== "Unverified" ? r.super_speciality.summary : "";
+  if (sp) return Object.keys(sp.areas).map((a) => AREA_NAME[a] ?? a).join(", ");
+  if (site.length) return site.join(", ");
+  const txt = r && r.super_speciality.confidence !== "Unverified" ? r.super_speciality.summary : "";
+  return [...new Set(DEPTS.filter(([re]) => re.test(txt)).map(([, n]) => n))].join(", ");
 }
 export function sheetRow(c: College) {
   const rs = RESIDENT[c.id]; const r = RESEARCH[c.id]; const sp = SUPERSPEC[c.id]; const st = SITES[c.id];

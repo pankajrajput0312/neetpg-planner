@@ -33,7 +33,7 @@ def labels(c):
     strong = [a for a in (sp or {}).get('areas', {}) if a in ('Cardiac', 'Neuro', 'Renal/Transplant', 'GI surgery', 'Onco', 'Paeds')]
     ssc = (r or {}).get('super_speciality', {}).get('confidence', 'Unverified')
     sdep = len([d for d in (st or {}).get('departments', []) if re.search(r'cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu', d, re.I)])
-    ss = (f'High — {len(strong)} super-speciality depts, officially confirmed', 'good') if sp and len(strong) >= 3 else (f"Medium — only {', '.join(sp['areas'])} (officially confirmed)", 'ok') if sp else ('Medium — only the hospital website claims them', 'ok') if sdep >= 3 else ('Medium — mentioned online, not confirmed', 'ok') if ssc in ('High', 'Medium') else ('Low — little super-speciality work', 'mid') if ssc == 'Low' or sdep else ('Missing — nothing found online', 'none')
+    ss = (f'High — {len(strong)} super-speciality depts, officially confirmed', 'good') if sp and len(strong) >= 3 else ('Medium — 1–2 areas, officially confirmed', 'ok') if sp else ('Medium — only the hospital website claims them', 'ok') if sdep >= 3 else ('Medium — mentioned online, not confirmed', 'ok') if ssc in ('High', 'Medium') else ('Low — little super-speciality work', 'mid') if ssc == 'Low' or sdep else ('Missing — nothing found online', 'none')
     hs = (rs or {}).get('hands_on'); neg = bool(hs and re.search(r'observ|limited|no hands|restricted|consultant-led|clerical', hs['summary'], re.I))
     ho = (('Poor — residents mostly watch', 'bad') if neg else ('Unclear — no reliable resident review', 'mid') if hs['confidence'] == 'Low' else ('Good — residents say they do cases', 'good')) if hs and hs['confidence'] != 'Unverified' else ('Some — reported, but not by residents', 'ok') if r and r['hands_on']['confidence'] != 'Unverified' else ('Unclear — no resident has said', 'mid') if (st or {}).get('anaesthesia_dept', {}) and (st['anaesthesia_dept'] or {}).get('services') else ('Missing — nothing found online', 'none')
     flags = [f for f in (rs or {}).get('red_flags', []) if DEAL.search(f)]; hc = (rs or {}).get('hours_culture')
@@ -52,9 +52,10 @@ DEPTS = [(r'cardiac surg|ctvs|cvts|cardiothoracic|cardio-?thoracic', 'Heart surg
 def multi_text(c):
     sp = S.get(c['id']); st = SITES.get(c['id']) or {}; r = R.get(c['id'])
     site = list(dict.fromkeys(n for rx, n in DEPTS if any(re.search(rx, d, re.I) for d in st.get('departments', []))))
-    if sp: return 'Officially confirmed: ' + ', '.join(AREA_NAME.get(a, a) for a in sp['areas']) + '.' + (' Website also lists: ' + ', '.join(site) + '.' if site else '')
-    if site: return 'Hospital website lists: ' + ', '.join(site) + '. Not officially confirmed.'
-    return r['super_speciality']['summary'] if r and r['super_speciality']['confidence'] != 'Unverified' else ''
+    if sp: return ', '.join(AREA_NAME.get(a, a) for a in sp['areas'])
+    if site: return ', '.join(site)
+    txt = r['super_speciality']['summary'] if r and r['super_speciality']['confidence'] != 'Unverified' else ''
+    return ', '.join(dict.fromkeys(n for rx, n in DEPTS if re.search(rx, txt, re.I)))
 def row(c):
     rs = RES.get(c['id']); r = R.get(c['id']); sp = S.get(c['id']); st = SITES.get(c['id']); o = O.get(c['id'], {})
     hands = rs['hands_on']['summary'] if rs and rs['hands_on']['confidence'] != 'Unverified' else r['hands_on']['summary'] if r and r['hands_on']['confidence'] != 'Unverified' else ''
@@ -121,7 +122,7 @@ G = [('Shortlist sheet — NEET-PG 2026 Anaesthesia, AIR ~42,000, OBC-NCL', '', 
  ('', '1-year bond / N-year bond', 'Must serve that many years after PG (or pay the penalty in Bond — detail).'),
  ('', 'Missing — bond not confirmed', 'No official bond document found; ask the college.'),
  ('Multispeciality exposure', 'High — N super-speciality depts, officially confirmed', 'Official MCC list shows super-speciality (DM/MCh) training running in 3+ of: heart, brain, kidney/transplant, GI surgery, cancer, children. Strongest proof those OTs are busy.'),
- ('', 'Medium — only Cardiac … (officially confirmed)', 'Officially confirmed, but in only 1–2 areas (named in the label).'),
+ ('', 'Medium — 1–2 areas, officially confirmed', 'Official super-speciality training runs here, but in only 1–2 areas (listed under the label).'),
  ('', 'Medium — only the hospital website claims them', 'The hospital website lists super-speciality departments (named in the detail); no official training course confirms them.'),
  ('', 'Medium — mentioned online, not confirmed', 'News or review sites mention it.'),
  ('', 'Low — little super-speciality work', 'Very little found.'),
