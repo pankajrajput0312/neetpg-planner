@@ -16,7 +16,7 @@ const COV = coverage();
 export default function Page() {
   const [s, setS] = useState<Store>(DEFAULT);
   const [loaded, setLoaded] = useState(false);
-  const [tab, setTab] = useState<"explore" | "compare" | "saved" | "lists" | "ai" | "sheet" | "decide">("explore");
+  const [tab, setTab] = useState<"explore" | "compare" | "saved" | "lists" | "ai" | "sheet" | "decide">("sheet");
   const [onlySaved, setOnlySaved] = useState(false);
   const [q, setQ] = useState("");
   const [fState, setFState] = useState<string[]>([]);
@@ -444,7 +444,7 @@ export default function Page() {
         </div>
         {readOnly && <div className="hint">👁 You are viewing someone's shared lists (read-only). Changes you make here are not saved.</div>}
         <nav>
-          {([["explore", "Explore"], ["compare", `Compare (${cmp.length})`], ["saved", `Saved (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["ai", "AI ranking"], ["sheet", "Sheet"], ["decide", "Before you decide"]] as const).map(([k, l]) => (
+          {([["sheet", `★ Her shortlist (${SHEET.length})`], ["explore", "Explore all"], ["compare", `Compare (${cmp.length})`], ["saved", `Saved (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["ai", "AI ranking"], ["decide", "Before you decide"]] as const).map(([k, l]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>))}
         </nav>
       </header>
