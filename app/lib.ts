@@ -9,6 +9,7 @@ import derivedData from "./derived.json";
 import sitesData from "./sites.json";
 import futureData from "./future.json";
 import residentData from "./resident.json";
+import toxhoursData from "./toxhours.json";
 
 export type Ranks = Record<string, Record<string, (number | null)[]>>;
 export type College = {
@@ -105,6 +106,11 @@ export const FUTURE = futureData as { sections: { title: string; summary: string
 export type ResItem = { text: string; src: string; url: string; date?: string | null };
 export type Resident = { hands_on: { summary: string; confidence: Conf; items: ResItem[] }; hours_culture: { summary: string; confidence: Conf; items: ResItem[] }; stipend_paid_on_time: string | null; red_flags: string[]; pros: ResItem[]; cons: ResItem[] };
 export const RESIDENT = residentData as Record<string, Resident>;
+export type ToxField = { cell: string; confidence: Conf; items: { text: string; src: string; url: string; date: string | null }[]; count?: Record<string, number> };
+export type ToxHours = { toxicity: ToxField; hours_per_day: ToxField; icu_per_week: ToxField; searches_done: number | null };
+// Online pass for the 3 sheet columns (toxicity, duty hours, ICU posting); key = college id, or "given:<name>" for sheet rows not in app data
+export const TOXHOURS = toxhoursData as Record<string, ToxHours>;
+export const toxFor = (key: string) => TOXHOURS[key];
 export const REC_KEY: Record<string, string> = { "Put high": "join", "Backup only": "backup", "Leave out": "avoid" };
 export const recommendation = (c: College) => DERIVED[c.id] ?? { pros: [], cons: [], facts: {}, rec: "Backup only", rec_why: "No data", data_verdict: null };
 export type ProCon = { text: string; src: string; url?: string };
@@ -156,8 +162,8 @@ export const SENIOR_METHOD = [
 ];
 export type Verdict = { verdict: string; headline: string; reasons: string[]; deal_breakers: string[]; verify: string[]; confidence: Conf | "" };
 const VERDICTS = verdictData as Record<string, Verdict>;
-export const VERDICT_ORDER = ["Join", "Join, after checks", "Backup only", "Avoid", "Not assessed"];
-export const verdictKey = (v: string) => ["join", "check", "backup", "avoid", "na"][VERDICT_ORDER.indexOf(v)] ?? "na";
+export const VERDICT_ORDER = ["Join", "Backup only", "Avoid", "Not assessed"];
+export const verdictKey = (v: string) => ["join", "backup", "avoid", "na"][VERDICT_ORDER.indexOf(v)] ?? "na";
 export function verdictOf(c: College): Verdict {
   return VERDICTS[c.id] ?? { verdict: "Not assessed", headline: "Not assessed — this seat closed far above your AIR in 2024–25, so it wasn't researched.", reasons: [], deal_breakers: [], verify: [], confidence: "" };
 }
@@ -357,7 +363,7 @@ export function excludedBy(c: College, p: Prefs): string | null {
   return null;
 }
 export function autoList(counselling: string, air: number, cat: string, w: Weights, p: Prefs = DEFAULT_PREFS) {
-  const tier = (c: College) => ({ "Join": 0, "Join, after checks": 1, "Backup only": 2 } as Record<string, number>)[verdictOf(c).verdict] ?? 9;
+  const tier = (c: College) => ({ "Join": 0, "Backup only": 1 } as Record<string, number>)[verdictOf(c).verdict] ?? 9;
   return COLLEGES.filter((c) => c.counselling === counselling && tier(c) < 9 && chance(c, air, cat).k !== "bad" && !excludedBy(c, p))
     .sort((a, b) => region(a.state) - region(b.state) || tier(a) - tier(b) || STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state) || autoScore(b, w) - autoScore(a, w))
     .map((c) => c.id);
@@ -441,7 +447,11 @@ export function priorityLabels(c: College): PLabel[] {
     : { n: 2, key: "Hands-on", label: "Unknown — ask", level: "none", tip: "Nothing online; only residents can tell you" };
   const flags = (rs?.red_flags ?? []).filter((f) => /suicide|harass|assault|unpaid|not paid|withh|ragging|threat culture|strike/i.test(f));
   const hc = rs?.hours_culture;
-  const hr: PLabel = flags.length && hc && CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Serious concerns", level: "bad", tip: flags[0] }
+  const tx = TOXHOURS[c.id]?.toxicity; const cnt = tx?.count ?? {}; const serious = (cnt.suicides ?? 0) + (cnt.unknown_deaths ?? 0); const minor = (cnt.strikes ?? 0) + (cnt.harassment ?? 0) + (cnt.resignations ?? 0);
+  const hr: PLabel = tx && tx.cell && serious > 0 ? { n: 3, key: "Hours", label: `${serious} death(s) reported`, level: "bad", tip: tx.cell }
+    : tx && tx.cell && minor > 0 ? { n: 3, key: "Hours", label: "Concerns reported", level: "mid", tip: tx.cell }
+    : tx && /nothing adverse/i.test(tx.cell) && !flags.length ? { n: 3, key: "Hours", label: "Nothing adverse online", level: "ok", tip: tx.cell }
+    : flags.length && hc && CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Serious concerns", level: "bad", tip: flags[0] }
     : flags.length ? { n: 3, key: "Hours", label: "Concerns reported", level: "mid", tip: flags[0] }
     : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Reported OK", level: "good", tip: hc.summary } : { n: 3, key: "Hours", label: "Mixed / thin", level: "mid", tip: hc.summary })
     : r && r.toxicity.confidence !== "Unverified" ? { n: 3, key: "Hours", label: "Some reports", level: "ok", tip: r.toxicity.summary }
@@ -469,5 +479,6 @@ export function sheetRow(c: College) {
   const icuText = [hoursText, st?.anaesthesia_dept?.notes ?? "", st?.academics ?? ""].join(" ");
   const icu = (icuText.match(/[^.]{0,60}\bICU\b[^.]{0,80}(?:week|posting|rotation|month)[^.]{0,40}/i) ?? [""])[0].trim();
   const b = OFFICIAL[c.id]?.bond_doc; const bond = b && (b.service_years || b.service_bond || b.leaving_penalty) ? [b.service_years, b.service_bond, b.leaving_penalty && `leaving: ${b.leaving_penalty}`].filter(Boolean).join(" · ") : c.kind === "pdnb" ? "None (NBEMS rule)" : c.kind === "mhpriv" ? "None; 3 yrs' fee if you resign late" : "";
-  return { bond, stipend: money(stipend(c)) ?? "", hands, multi, tox, hours, icu };
+  const t = TOXHOURS[c.id];
+  return { bond, stipend: money(stipend(c)) ?? "", hands, multi, tox: t?.toxicity.cell || tox, hours: t?.hours_per_day.cell || hours, icu: t?.icu_per_week.cell || icu };
 }

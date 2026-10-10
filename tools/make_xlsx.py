@@ -6,7 +6,7 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 APP = '/Users/pankaj/Documents/code/neetpg-planner/app/'
 L = lambda f: json.load(open(APP + f))
-C = {c['id']: c for c in L('colleges.json')['colleges']}; R = L('research.json'); O = L('official.json'); V = L('verdict.json'); S = L('superspec.json'); SITES = L('sites.json'); RES = L('resident.json'); D = L('derived.json'); SHEET = L('sheet.json')
+C = {c['id']: c for c in L('colleges.json')['colleges']}; R = L('research.json'); O = L('official.json'); V = L('verdict.json'); S = L('superspec.json'); SITES = L('sites.json'); RES = L('resident.json'); D = L('derived.json'); SHEET = L('sheet.json'); TX = L('toxhours.json')
 AIR, CAT = 42000, 'OBC'
 STATES = ["Maharashtra", "Delhi", "Gujarat", "Rajasthan", "Uttar Pradesh", "Madhya Pradesh", "Himachal Pradesh", "Uttarakhand", "Punjab", "Chhattisgarh", "Jharkhand", "Karnataka", "Tamil Nadu", "Meghalaya", "Assam", "Odisha", "Manipur", "Andhra Pradesh"]
 strip = lambda h: re.sub('<[^>]+>', '', h or '')
@@ -37,7 +37,8 @@ def labels(c):
     hs = (rs or {}).get('hands_on'); neg = bool(hs and re.search(r'observ|limited|no hands|restricted|consultant-led|clerical', hs['summary'], re.I))
     ho = (('Observation-heavy', 'bad') if neg else ('Some reports (weak)', 'mid') if hs['confidence'] == 'Low' else ('Good (reported)', 'good')) if hs and hs['confidence'] != 'Unverified' else ('Some evidence', 'ok') if r and r['hands_on']['confidence'] != 'Unverified' else ('Dept page only', 'mid') if (st or {}).get('anaesthesia_dept', {}) and (st['anaesthesia_dept'] or {}).get('services') else ('Unknown — ask', 'none')
     flags = [f for f in (rs or {}).get('red_flags', []) if DEAL.search(f)]; hc = (rs or {}).get('hours_culture')
-    hr = ('Serious concerns', 'bad') if flags and hc and CONF[hc['confidence']] >= 2 else ('Concerns reported', 'mid') if flags else (('Reported OK', 'good') if CONF[hc['confidence']] >= 2 else ('Mixed / thin', 'mid')) if hc and hc['confidence'] != 'Unverified' else ('Some reports', 'ok') if r and r['toxicity']['confidence'] != 'Unverified' else ('Unknown — ask', 'none')
+    tx = TX.get(c['id'], {}).get('toxicity'); cnt = (tx or {}).get('count', {}); serious = cnt.get('suicides', 0) + cnt.get('unknown_deaths', 0); minor = cnt.get('strikes', 0) + cnt.get('harassment', 0) + cnt.get('resignations', 0)
+    hr = (f'{serious} death(s) reported', 'bad') if tx and tx['cell'] and serious else ('Concerns reported', 'mid') if tx and tx['cell'] and minor else ('Nothing adverse online', 'ok') if tx and re.search(r'(?i)nothing adverse', tx['cell']) and not flags else ('Serious concerns', 'bad') if flags and hc and CONF[hc['confidence']] >= 2 else ('Concerns reported', 'mid') if flags else (('Reported OK', 'good') if CONF[hc['confidence']] >= 2 else ('Mixed / thin', 'mid')) if hc and hc['confidence'] != 'Unverified' else ('Some reports', 'ok') if r and r['toxicity']['confidence'] != 'Unverified' else ('Unknown — ask', 'none')
     by = bond_years(c)
     bd = ('None', 'good') if by == 0 else ('1 yr', 'ok') if by == 1 else (f'{by} yrs', 'bad') if by is not None else ('Not verified', 'none')
     return ss, ho, hr, bd
@@ -53,10 +54,12 @@ def row(c):
     icu = (re.search(r'[^.]{0,60}\bICU\b[^.]{0,80}(?:week|posting|rotation|month)[^.]{0,40}', htxt + ' ' + ((st or {}).get('anaesthesia_dept') or {}).get('notes', '') + ' ' + ((st or {}).get('academics') or '')) or [''])
     icu = icu.group(0).strip() if hasattr(icu, 'group') else ''
     b = o.get('bond_doc'); bond = ' · '.join(x for x in [b.get('service_years'), b.get('service_bond'), b.get('leaving_penalty') and 'leaving: ' + b['leaving_penalty']] if x) if b and (b.get('service_years') or b.get('service_bond') or b.get('leaving_penalty')) else 'None (NBEMS rule)' if c['kind'] == 'pdnb' else "None; 3 yrs' fee if you resign late" if c['kind'] == 'mhpriv' else ''
+    t = TX.get(c['id'])
+    if t: tox, hours, icu = t['toxicity']['cell'] or tox, t['hours_per_day']['cell'] or hours, t['icu_per_week']['cell'] or icu
     return bond, stipend(c), hands, multi, tox, hours, icu
 FILL = {'good': 'DCF5E6', 'ok': 'E4ECFF', 'mid': 'FFF1C9', 'bad': 'FDE4E4', 'none': 'F2F2F2'}
 FONT = {'good': '0B6B3A', 'ok': '1D4ED8', 'mid': '8A5A00', 'bad': 'B91C1C', 'none': '666666'}
-VK = {'Join': 'good', 'Join, after checks': 'ok', 'Backup only': 'mid', 'Avoid': 'bad'}
+VK = {'Join': 'good', 'Backup only': 'mid', 'Avoid': 'bad'}
 wb = Workbook(); ws = wb.active; ws.title = 'Shortlist'
 head = ['State', 'College (as given)', 'Matched in app', 'Type', 'Verdict', 'For you', 'Why (one line)', 'Chance at 42k', '2025 closing AIR', '2024 closing AIR',
         'Bond — label', 'Bond — detail', 'Stipend (yr 1)', 'Multispeciality exposure — level', 'Multispeciality — detail', 'Hands on — label', 'Hands on — detail',
@@ -69,7 +72,8 @@ for cell in ws[1]: cell.font = Font(bold=True, color='2563EB'); cell.alignment =
 for st in STATES:
     for s in [x for x in SHEET if x['state'] == st]:
         c = C.get(s['id']) if s['id'] else None
-        if not c: ws.append([st, s['given'], 'not in app data (no 2024–25 allotment near your rank)'] + [''] * (len(head) - 3)); continue
+        if not c:
+            t = TX.get('given:' + s['given'], {}); ws.append([st, s['given'], 'not in app data (no MCC anaesthesia allotment 2024–25)'] + [''] * (len(head) - 6) + [t.get(k, {}).get('cell', '') for k in ('toxicity', 'hours_per_day', 'icu_per_week')]); continue
         v = V.get(c['id']); d = D.get(c['id'], {}); ch = chance(c); ss, ho, hr, bd = labels(c); bond, stp, hands, multi, tox, hours, icu = row(c)
         typ = {'govt': 'Government college', 'mhgovt': 'Government college (MH quota)', 'deemed': 'Deemed university (private)', 'mhpriv': 'Private college (MH quota)', 'pdnb': 'Private hospital · DNB', 'gdnb': 'Government hospital · DNB'}.get(c['kind'], c['kind'])
         ws.append([st, s['given'], c['name'].split(',')[0][:60], typ, v['verdict'] if v else 'Not assessed', d.get('rec', ''), (v['headline'] if v else d.get('data_verdict', '')) or '', ch[0], deep(c, '2025') or '', deep(c, '2024') or '',
@@ -88,7 +92,7 @@ ws.freeze_panes = 'C3'; ws.auto_filter.ref = f"A2:{get_column_letter(len(head))}
 # legend sheet
 lg = wb.create_sheet('How to read')
 for line in ['Shortlist sheet — NEET-PG 2026 Anaesthesia, AIR ~42,000 OBC-NCL', '',
-    'Verdict: Join / Join after checks / Backup only / Avoid — from official data + web/resident research on her 5 priorities.',
+    'Verdict: Join / Backup only / Avoid — a decision, not a hedge; the "Confirm before locking" questions still live in the app drawer.',
     'For you: Put high / Backup only / Leave out — whether the seat is worth filling in counselling.',
     'Chance: Likely = reached in 2024 & 2025; Possible = 2025 only; Borderline = within 10% of 2025 closing; Unlikely = not reached.',
     'Labels: green = good, blue = acceptable, amber = caution, red = problem, grey "Unknown — ask" = nothing verified online (only seniors can answer).',

@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   BY_ID, COLLEGES, CRITS, DEFAULT, GUIDE, PREP, PRESETS, RESEARCH, ROUNDS, ROW_HELP, ROW_LABEL, STATE_ORDER,
   beds, bondShort, chance, evidence, money, coverage, deepest, fee, firstRound, fmt, gaps, isDnb, params, place, roundClose, score,
-  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels, SHEET, SHEET_STATES, sheetRow,
+  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels, SHEET, SHEET_STATES, sheetRow, toxFor,
   type College, type Conf, type Crit, type Param, type Store, type Resident, type Prefs,
 } from "./lib";
 
@@ -346,6 +346,16 @@ export default function Page() {
             <p className="muted small">forum = anonymous residents (weak alone); news = reported; official = college/NMC page; snippet = only the search result text was readable.</p>
           </>); })()}
 
+          {toxFor(c.id) && (() => { const t = toxFor(c.id)!; const block = (title: string, x: typeof t.toxicity) => (
+            <div className="param"><b>{title}</b> <ConfTag c={x.confidence} /><p>{x.cell || <span className="muted">Nothing found online — ask seniors</span>}</p>
+              {x.items.length > 0 && <ul className="small">{x.items.map((i, k) => <li key={k}>{i.text} <span className={"src " + i.src}>{i.src}</span>{i.url && <a href={i.url} target="_blank" rel="noopener"> ↗</a>}{i.date && <span className="muted"> · {i.date}</span>}</li>)}</ul>}
+            </div>); return (<>
+            <h4>Toxicity, duty hours, ICU posting — online search</h4>
+            {block("Toxicity (resignations / suicides / unknown deaths / strikes)", t.toxicity)}
+            {block("Working hours per day", t.hours_per_day)}
+            {block("ICU posting", t.icu_per_week)}
+          </>); })()}
+
           <h4>Pros & cons <span className="muted">(official data · hospital site · residents/news · web research)</span></h4>
           <div className="pc">
             <ul className="pros">{allPros(c).length ? allPros(c).map((p, i) => <li key={i}>{p.text} <span className={"src " + p.src}>{p.src}</span>{p.url && <a href={p.url} target="_blank" rel="noopener">↗</a>}</li>) : <li className="muted">Nothing found</li>}</ul>
@@ -581,7 +591,7 @@ export default function Page() {
           </div>
           {(() => { const ex = list.items.filter((id) => BY_ID.get(id) && excludedBy(BY_ID.get(id)!, prefs)).length; return ex ? <p className="small"><b>⚠ {ex} choice(s) break your own rules</b> (budget / DNB / bond / eligibility) — marked in the table.</p> : null; })()}
           {st.warn.length ? <ul>{st.warn.map((x) => <li key={x}>{x}</li>)}</ul> : list.items.length > 0 && <p className="muted">List mix looks healthy.</p>}
-          <p className="muted small"><b>Auto lists</b> = verdict “Join, after checks” first, then “Backup only”; within each, your state order (Delhi → Maharashtra → UP → MP → Gujarat → Rajasthan → everything else, J&amp;K last), then the evidence score from your 5 priorities. “Avoid” and out-of-reach seats are left out — reorder freely.</p>
+          <p className="muted small"><b>Auto lists</b> = verdict “Join” first, then “Backup only”; within each, your state order (Delhi → Maharashtra → UP → MP → Gujarat → Rajasthan → everything else, J&amp;K last), then the evidence score from your 5 priorities. “Avoid” and out-of-reach seats are left out — reorder freely.</p>
           <p className="muted small">Order by <b>preference</b>: counselling gives you the highest choice that's still available, so a dream college at #1 never hurts. Grab the ⠿ handle to drag a row, use ▲ ▼, or type a position number. Click a college name for full details.</p>
         </section>
         {list.items.length === 0 && <p className="empty">Empty list — add colleges from Explore or Compare.</p>}
@@ -722,7 +732,7 @@ export default function Page() {
           <div className="decide">
             <section className="strategy">
               <div className="row-btns" style={{ justifyContent: "space-between", alignItems: "center" }}><h2>Shortlist sheet <span className="muted">({SHEET.length} colleges)</span></h2><div className="row-btns"><a className="btn" href="/NEETPG_Anaesthesia_Shortlist_Sheet.xlsx" download>Download Excel</a><button onClick={csv}>Export CSV</button></div></div>
-              <div className="mix"><span className="tag v-join">✓ Join {counts.join}</span><span className="tag v-check">Join after checks {counts.check}</span><span className="tag v-backup">Backup only {counts.backup}</span><span className="tag v-avoid">Avoid {counts.avoid}</span><span className="tag v-na">Not assessed / not in data {counts.na}</span></div>
+              <div className="mix"><span className="tag v-join">✓ Join {counts.join}</span><span className="tag v-backup">Backup only {counts.backup}</span><span className="tag v-avoid">Avoid {counts.avoid}</span><span className="tag v-na">Not assessed / not in data {counts.na}</span></div>
               <p className="muted small">Maharashtra first, then the other states in the order given. Each evidence cell starts with a label (green good · blue acceptable · amber caution · red problem · dashed = unverified) followed by the text found. A blank cell means nothing was verified — not that the answer is "no". Click a name for the full detail panel.</p>
             </section>
             <div className="ltwrap"><table className="lt sheet">
@@ -742,7 +752,7 @@ export default function Page() {
                       {cell(L![4], d.bond)}<td className="small cell-text">{d.stipend}</td>
                       {cell(L![0], d.multi)}{cell(L![1], d.hands)}{cell(L![2], d.tox)}
                       <td className="small cell-text">{d.hours}</td><td className="small cell-text">{d.icu}</td>
-                    </>) : [0, 1, 2, 3, 4, 5, 6].map((i) => <td key={i} />)}
+                    </>) : (() => { const t = toxFor("given:" + row.given); return <><td /><td /><td /><td /><td className="small cell-text">{t?.toxicity.cell ?? ""}</td><td className="small cell-text">{t?.hours_per_day.cell ?? ""}</td><td className="small cell-text">{t?.icu_per_week.cell ?? ""}</td></>; })()}
                   </tr>); })}
               </Fragment>))}</tbody></table></div>
           </div>);

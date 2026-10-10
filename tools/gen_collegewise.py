@@ -289,7 +289,9 @@ ORDER = ['Maharashtra', 'Delhi', 'Uttar Pradesh', 'Madhya Pradesh', 'Karnataka',
 NE = ['Assam', 'Tripura', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Arunachal', 'Sikkim']
 by = collections.defaultdict(list)
 for c in C.values():
-    if c['st'] in ORDER or mx25(c) >= 38000: by[c['st']].append(c)
+    # Her own shortlist includes some hospitals that closed just under 38k outside the preferred states — always keep these.
+    INCLUDE = re.compile(r'SATGURU PARTAP|MOHANDAI OSWAL|FORTIS HOSPITAL, MUNDIAN|MMI NARAYANA|APOLLO SPECIALTY HOSPITAL, LAKE VIEW|BILLROTH|KONGUNAD|JAIPRAKASH HOSPITAL|MEDICOVER HOSPITALS MVP|APOLLO SPECIALITY HOSPITALS, NELLORE|KIMS SAVEERA|SEVEN HILLS HOSPITAL|LALITHA SUPER SPECIALTY', re.I)
+    if c['st'] in ORDER or mx25(c) >= 38000 or INCLUDE.search(c['name']): by[c['st']].append(c)
 others = sorted([s for s in by if s not in ORDER and s not in NE and s != 'Jammu and Kashmir'])
 states = ORDER + others + [s for s in NE if s in by] + (['Jammu and Kashmir'] if 'Jammu and Kashmir' in by else [])
 SEC = [('govt', 'MD — Government (MCC 50% AIQ)'), ('deemed', 'MD — Deemed universities (MCC)'), ('pdnb', 'DNB — Private hospitals (MCC)'), ('gdnb', 'DNB — Government hospitals (MCC)')]
