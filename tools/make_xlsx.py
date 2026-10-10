@@ -33,7 +33,7 @@ def labels(c):
     strong = [a for a in (sp or {}).get('areas', {}) if a in ('Cardiac', 'Neuro', 'Renal/Transplant', 'GI surgery', 'Onco', 'Paeds')]
     ssc = (r or {}).get('super_speciality', {}).get('confidence', 'Unverified')
     sdep = len([d for d in (st or {}).get('departments', []) if re.search(r'cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu', d, re.I)])
-    ss = ('Strong (official)', 'good') if sp and len(strong) >= 3 else (f"Some (official: {', '.join(sp['areas'])})", 'ok') if sp else ('Claimed on site', 'ok') if sdep >= 3 else ('Claimed', 'ok') if ssc in ('High', 'Medium') else ('Weak / unclear', 'mid') if ssc == 'Low' or sdep else ('Unknown — ask', 'none')
+    ss = (f'High exposure ({len(strong)} core SS, official)', 'good') if sp and len(strong) >= 3 else (f"Medium exposure (official: {', '.join(sp['areas'])})", 'ok') if sp else (f'Medium exposure ({sdep} SS depts on site)', 'ok') if sdep >= 3 else ('Medium exposure (reported)', 'ok') if ssc in ('High', 'Medium') else ('Low exposure', 'mid') if ssc == 'Low' or sdep else ('Unknown — ask', 'none')
     hs = (rs or {}).get('hands_on'); neg = bool(hs and re.search(r'observ|limited|no hands|restricted|consultant-led|clerical', hs['summary'], re.I))
     ho = (('Observation-heavy', 'bad') if neg else ('Some reports (weak)', 'mid') if hs['confidence'] == 'Low' else ('Good (reported)', 'good')) if hs and hs['confidence'] != 'Unverified' else ('Some evidence', 'ok') if r and r['hands_on']['confidence'] != 'Unverified' else ('Dept page only', 'mid') if (st or {}).get('anaesthesia_dept', {}) and (st['anaesthesia_dept'] or {}).get('services') else ('Unknown — ask', 'none')
     flags = [f for f in (rs or {}).get('red_flags', []) if DEAL.search(f)]; hc = (rs or {}).get('hours_culture')
@@ -59,7 +59,7 @@ FONT = {'good': '0B6B3A', 'ok': '1D4ED8', 'mid': '8A5A00', 'bad': 'B91C1C', 'non
 VK = {'Join': 'good', 'Join, after checks': 'ok', 'Backup only': 'mid', 'Avoid': 'bad'}
 wb = Workbook(); ws = wb.active; ws.title = 'Shortlist'
 head = ['State', 'College (as given)', 'Matched in app', 'Type', 'Verdict', 'For you', 'Why (one line)', 'Chance at 42k', '2025 closing AIR', '2024 closing AIR',
-        'Bond — label', 'Bond — detail', 'Stipend (yr 1)', 'Multispeciality — label', 'Multispeciality — detail', 'Hands on — label', 'Hands on — detail',
+        'Bond — label', 'Bond — detail', 'Stipend (yr 1)', 'Multispeciality exposure — level', 'Multispeciality — detail', 'Hands on — label', 'Hands on — detail',
         'Toxicity — label', 'Toxicity (resignations / suicides / unknown deaths)', 'Working hours / day', 'ICU posting hrs / week']
 seg = ['', '', '', '', 'Verdict', '', '', 'Reach', '', '', 'Money & bond', '', '', 'Training', '', '', '', 'Daily life', '', '', '']
 ws.append(seg); ws.append(head)

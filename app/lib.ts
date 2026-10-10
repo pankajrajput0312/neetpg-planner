@@ -428,11 +428,11 @@ export function priorityLabels(c: College): PLabel[] {
   const strong = sp ? Object.keys(sp.areas).filter((a) => ["Cardiac", "Neuro", "Renal/Transplant", "GI surgery", "Onco", "Paeds"].includes(a)) : [];
   const ssc = r?.super_speciality.confidence ?? "Unverified";
   const siteDepts = st ? st.departments.filter((d) => /cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu/i.test(d)).length : 0;
-  const ss: PLabel = sp && strong.length >= 3 ? { n: 1, key: "Super-spec", label: "Strong (official)", level: "good", tip: `DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025)` }
-    : sp ? { n: 1, key: "Super-spec", label: `Some (official: ${Object.keys(sp.areas).join(", ")})`, level: "ok", tip: "Official courses in fewer than 3 core areas" }
-    : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: "Claimed on site", level: "ok", tip: st!.departments.join(", ") }
-    : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Claimed", level: "ok", tip: r!.super_speciality.summary }
-    : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Weak / unclear", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
+  const ss: PLabel = sp && strong.length >= 3 ? { n: 1, key: "Super-spec", label: `High exposure (${strong.length} core SS, official)`, level: "good", tip: `DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025)` }
+    : sp ? { n: 1, key: "Super-spec", label: `Medium exposure (official: ${Object.keys(sp.areas).join(", ")})`, level: "ok", tip: "Official courses in fewer than 3 core areas" }
+    : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: `Medium exposure (${siteDepts} SS depts on site)`, level: "ok", tip: st!.departments.join(", ") }
+    : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Medium exposure (reported)", level: "ok", tip: r!.super_speciality.summary }
+    : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Low exposure", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
     : { n: 1, key: "Super-spec", label: "Unknown — ask", level: "none", tip: "No department could be verified" };
   const hs = rs?.hands_on; const neg = hs ? /observ|limited|no hands|restricted|consultant-led|clerical/i.test(hs.summary) : false;
   const ho: PLabel = hs && hs.confidence !== "Unverified" ? (neg ? { n: 2, key: "Hands-on", label: "Observation-heavy", level: "bad", tip: hs.summary } : hs.confidence === "Low" ? { n: 2, key: "Hands-on", label: "Some reports (weak)", level: "mid", tip: hs.summary } : { n: 2, key: "Hands-on", label: "Good (reported)", level: "good", tip: hs.summary })
