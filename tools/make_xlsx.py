@@ -64,11 +64,9 @@ wb = Workbook(); ws = wb.active; ws.title = 'Shortlist'
 head = ['State', 'College (as given)', 'Matched in app', 'Type', 'Verdict', 'For you', 'Why (one line)', 'Chance at 42k', '2025 closing AIR', '2024 closing AIR',
         'Bond — label', 'Bond — detail', 'Stipend (yr 1)', 'Multispeciality exposure — level', 'Multispeciality — detail', 'Hands on — label', 'Hands on — detail',
         'Toxicity — label', 'Toxicity (resignations / suicides / unknown deaths)', 'Working hours / day', 'ICU posting hrs / week']
-seg = ['', '', '', '', 'Verdict', '', '', 'Reach', '', '', 'Money & bond', '', '', 'Training', '', '', '', 'Daily life', '', '', '']
-ws.append(seg); ws.append(head)
+ws.append(head)
 thin = Side(style='thin', color='DDDDDD')
-for cell in ws[2]: cell.font = Font(bold=True, color='FFFFFF'); cell.fill = PatternFill('solid', fgColor='111111'); cell.alignment = Alignment(wrap_text=True, vertical='center')
-for cell in ws[1]: cell.font = Font(bold=True, color='2563EB'); cell.alignment = Alignment(horizontal='center')
+for cell in ws[1]: cell.font = Font(bold=True, color='FFFFFF'); cell.fill = PatternFill('solid', fgColor='111111'); cell.alignment = Alignment(wrap_text=True, vertical='center')
 for st in STATES:
     for s in [x for x in SHEET if x['state'] == st]:
         c = C.get(s['id']) if s['id'] else None
@@ -86,9 +84,9 @@ for st in STATES:
         if deep(c, '2025') >= AIR: paint(9, 'good')
 widths = [14, 26, 28, 20, 16, 12, 40, 12, 12, 12, 12, 34, 16, 22, 40, 18, 40, 18, 40, 30, 30]
 for i, w in enumerate(widths, 1): ws.column_dimensions[get_column_letter(i)].width = w
-for rowc in ws.iter_rows(min_row=3):
+for rowc in ws.iter_rows(min_row=2):
     for cell in rowc: cell.alignment = Alignment(wrap_text=True, vertical='top'); cell.border = Border(top=thin, bottom=thin, left=thin, right=thin)
-ws.freeze_panes = 'C3'; ws.auto_filter.ref = f"A2:{get_column_letter(len(head))}{ws.max_row}"
+ws.freeze_panes = 'C2'; ws.auto_filter.ref = f"A1:{get_column_letter(len(head))}{ws.max_row}"
 # legend sheet
 lg = wb.create_sheet('How to read')
 for line in ['Shortlist sheet — NEET-PG 2026 Anaesthesia, AIR ~42,000 OBC-NCL', '',
@@ -102,4 +100,4 @@ for line in ['Shortlist sheet — NEET-PG 2026 Anaesthesia, AIR ~42,000 OBC-NCL'
     lg.append([line])
 lg.column_dimensions['A'].width = 140
 out = '/Users/pankaj/Documents/code/neetpg-planner/public/NEETPG_Anaesthesia_Shortlist_Sheet.xlsx'
-import os; os.makedirs('/Users/pankaj/Documents/code/neetpg-planner/public', exist_ok=True); wb.save(out); print('saved', out, ws.max_row - 2, 'rows')
+import os; os.makedirs('/Users/pankaj/Documents/code/neetpg-planner/public', exist_ok=True); wb.save(out); print('saved', out, ws.max_row - 1, 'rows')
