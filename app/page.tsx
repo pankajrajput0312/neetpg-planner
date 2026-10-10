@@ -416,33 +416,6 @@ export default function Page() {
           <h1>Anaesthesia PG Choice Planner</h1>
           <span className="muted">NEET-PG 2026 · MD / DNB · {COLLEGES.length} seats · official 2024–25 cutoffs</span>
         </div>
-        <div className="profile">
-          <label>AIR <input type="number" min={1} value={s.air} onChange={(e) => up({ air: Math.max(1, +e.target.value || 1) })} /></label>
-          <label>Category <select value={s.cat} onChange={(e) => up({ cat: e.target.value as Store["cat"] })}><option>OBC</option><option>Open</option></select></label>
-          <label>Priorities <select value={set.id} onChange={(e) => up({ activeSet: e.target.value })}>{s.sets.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-          <details className="weights"><summary>Weights</summary>
-            {CRITS.map(([k, label]) => (
-              <label key={k} className="w">{label} <input type="range" min={0} max={50} value={w[k]} onChange={(e) => setWeights(k, +e.target.value)} /> <b>{w[k]}</b></label>))}
-            <div className="row-btns">
-              <button onClick={() => { const n = prompt("Name for new priority set", set.name + " (copy)"); if (n) { const id = "p" + Date.now(); up({ sets: [...s.sets, { id, name: n, weights: { ...w } }], activeSet: id }); } }}>Save as new</button>
-              <button onClick={() => { const n = prompt("Rename priority set", set.name); if (n) up({ sets: s.sets.map((x) => (x.id === set.id ? { ...x, name: n } : x)) }); }}>Rename</button>
-              <button onClick={() => { if (s.sets.length > 1 && confirm(`Delete “${set.name}”?`)) { const r = s.sets.filter((x) => x.id !== set.id); up({ sets: r, activeSet: r[0].id }); } }}>Delete</button>
-            </div>
-          </details>
-          <details className="weights sync"><summary>{readOnly ? "👁 Shared view" : syncSecret ? "☁ Sync on" : "☁ Sync / share"}</summary>
-            {readOnly ? <p className="small">{syncMsg} <br />Open the site without <code>?view=</code> to use your own planner.</p> : (<>
-              <p className="small muted">Use the same sync code on every device to see the same lists. Share the read-only link with anyone.</p>
-              <div className="row-btns">
-                <input type="text" placeholder="sync code (≥8 chars, keep it secret)" value={syncSecret} onChange={(e) => setSyncSecret(e.target.value)} style={{ flex: 1 }} />
-                <button onClick={() => { const c = Math.random().toString(36).slice(2, 10) + "-" + Math.random().toString(36).slice(2, 8); setSyncSecret(c); }}>Generate</button>
-                <button className="primary" onClick={() => enableSync(syncSecret)}>Enable sync</button>
-                {syncId && <button onClick={disableSync}>Turn off</button>}
-              </div>
-              {syncMsg && <p className="small">{syncMsg}</p>}
-              {syncId && (<p className="small">Read-only share link: <code>{`${typeof location !== "undefined" ? location.origin : ""}/?view=${syncId}`}</code> <button onClick={() => navigator.clipboard.writeText(`${location.origin}/?view=${syncId}`)}>Copy</button></p>)}
-            </>)}
-          </details>
-        </div>
         {readOnly && <div className="hint">👁 You are viewing someone's shared lists (read-only). Changes you make here are not saved.</div>}
         <nav>
           {([["sheet", `★ Her shortlist (${SHEET.length})`], ["explore", "Explore all"], ["compare", `Compare (${cmp.length})`], ["saved", `Saved (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["ai", "AI ranking"], ["decide", "Before you decide"]] as const).map(([k, l]) => (
