@@ -327,3 +327,4 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .pl.mid { background: var(--mid-bg); color: var(--mid); } .pl.bad { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); }
 .pl.none { background: transparent; color: var(--muted); border-style: dashed; }
 @media (max-width: 760px) { .plabels { grid-template-columns: repeat(2, 1fr); } }
+.sheet th, .sheet td { min-width: 150px; } .sheet .cn { min-width: 200px; } .sheet .cell-text { white-space: normal; max-width: 300px; }

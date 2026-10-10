@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   BY_ID, COLLEGES, CRITS, DEFAULT, GUIDE, PREP, PRESETS, RESEARCH, ROUNDS, ROW_HELP, ROW_LABEL, STATE_ORDER,
   beds, bondShort, chance, evidence, money, coverage, deepest, fee, firstRound, fmt, gaps, isDnb, params, place, roundClose, score,
-  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels,
+  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels, SHEET, SHEET_STATES, sheetRow,
   type College, type Conf, type Crit, type Param, type Store, type Resident, type Prefs,
 } from "./lib";
 
@@ -16,7 +16,7 @@ const COV = coverage();
 export default function Page() {
   const [s, setS] = useState<Store>(DEFAULT);
   const [loaded, setLoaded] = useState(false);
-  const [tab, setTab] = useState<"explore" | "compare" | "saved" | "lists" | "ai" | "decide">("explore");
+  const [tab, setTab] = useState<"explore" | "compare" | "saved" | "lists" | "ai" | "sheet" | "decide">("explore");
   const [onlySaved, setOnlySaved] = useState(false);
   const [q, setQ] = useState("");
   const [fState, setFState] = useState<string[]>([]);
@@ -434,7 +434,7 @@ export default function Page() {
         </div>
         {readOnly && <div className="hint">👁 You are viewing someone's shared lists (read-only). Changes you make here are not saved.</div>}
         <nav>
-          {([["explore", "Explore"], ["compare", `Compare (${cmp.length})`], ["saved", `Saved (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["ai", "AI ranking"], ["decide", "Before you decide"]] as const).map(([k, l]) => (
+          {([["explore", "Explore"], ["compare", `Compare (${cmp.length})`], ["saved", `Saved (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["ai", "AI ranking"], ["sheet", "Sheet"], ["decide", "Before you decide"]] as const).map(([k, l]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>))}
         </nav>
       </header>
@@ -704,6 +704,32 @@ export default function Page() {
             </section>
             {block("MCC counselling (AIQ · deemed · DNB)", mcc, "AI: MCC")}
             {prefs.mhEligible !== "no" && block("Maharashtra state quota (only if you are eligible)", mh, "AI: Maharashtra state")}
+          </div>);
+      })()}
+
+      {tab === "sheet" && (() => {
+        const cols = ["Bond", "Stipend", "Hands on", "Multispeciality exposure", "Toxicity (resignations / suicides / unknown deaths)", "Working hours / day", "ICU posting hrs / week"];
+        const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+        const csv = () => { const lines = [["State", "College", "2025 closing", ...cols].map(esc).join(",")];
+          for (const st of SHEET_STATES) for (const row of SHEET.filter((x) => x.state === st)) { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null;
+            lines.push([st, row.given, c ? deepest(c, "2025", s.cat) : "", d?.bond, d?.stipend, d?.hands, d?.multi, d?.tox, d?.hours, d?.icu].map(esc).join(",")); }
+          download("shortlist-sheet.csv", lines.join("\n"), "text/csv"); };
+        return (
+          <div className="decide">
+            <section className="strategy">
+              <div className="row-btns" style={{ justifyContent: "space-between", alignItems: "center" }}><h2>Shortlist sheet <span className="muted">({SHEET.length} colleges)</span></h2><button onClick={csv}>Export CSV</button></div>
+              <p className="muted small">Maharashtra first, then the other states in the order given. A blank cell means nothing was verified — not that the answer is "no". "Not in app data" = the hospital had no 2024–25 allotment near your rank, so it was never researched. Click a name for the full detail panel.</p>
+            </section>
+            <div className="ltwrap"><table className="lt sheet"><thead><tr><th>College</th><th className="num">2025 closing</th>{cols.map((h) => <th key={h}>{h}</th>)}</tr></thead>
+              <tbody>{SHEET_STATES.map((st) => (<Fragment key={st}>
+                <tr className="stateh"><td colSpan={2 + cols.length}>{st}</td></tr>
+                {SHEET.filter((x) => x.state === st).map((row) => { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null; return (
+                  <tr key={row.given}>
+                    <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{row.given}</b> : <b className="muted">{row.given}</b>}<small>{c ? `${shortName(c)} · ${typeLabel(c)}` : "not in app data"}</small></td>
+                    <td className={"num " + (c ? cellCls(deepest(c, "2025", s.cat) || null) : "")}>{c ? fmt(deepest(c, "2025", s.cat)) : ""}</td>
+                    {d ? [d.bond, d.stipend, d.hands, d.multi, d.tox, d.hours, d.icu].map((v, i) => <td key={i} className="small cell-text">{v}</td>) : cols.map((h) => <td key={h} />)}
+                  </tr>); })}
+              </Fragment>))}</tbody></table></div>
           </div>);
       })()}
 

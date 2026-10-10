@@ -451,3 +451,23 @@ export function priorityLabels(c: College): PLabel[] {
   const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "None", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1 yr", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by} yrs`, level: "bad", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Not verified", level: "none", tip: strip(c.bond).slice(0, 120) };
   return [ss, ho, hr, dnb, bd];
 }
+
+// ---------- Sheet tab: her friend's list with 7 columns, blank when nothing is verified ----------
+import sheetData from "./sheet.json";
+export const SHEET = sheetData as { state: string; given: string; id: string | null; matched: string | null }[];
+export const SHEET_STATES = ["Maharashtra", "Delhi", "Gujarat", "Rajasthan", "Uttar Pradesh", "Madhya Pradesh", "Himachal Pradesh", "Uttarakhand", "Punjab", "Chhattisgarh", "Jharkhand", "Karnataka", "Tamil Nadu", "Meghalaya", "Assam", "Odisha", "Manipur", "Andhra Pradesh"];
+const HOURS = /\b\d{1,2}(?:\s*[-–to]+\s*\d{1,2})?\s*(?:h\b|hr|hrs|hour)[^.;]{0,60}/gi;
+const TOX = /suicide|death|died|resign|strike|harass|unpaid|not paid|withh|protest|ragging|threat culture|assault/i;
+export function sheetRow(c: College) {
+  const rs = RESIDENT[c.id]; const r = RESEARCH[c.id]; const sp = SUPERSPEC[c.id]; const st = SITES[c.id];
+  const hands = rs && rs.hands_on.confidence !== "Unverified" ? rs.hands_on.summary : r && r.hands_on.confidence !== "Unverified" ? r.hands_on.summary : "";
+  const multi = sp ? `Official courses: ${Object.keys(sp.areas).join(", ")}` : st && st.departments.length ? `Site lists: ${st.departments.slice(0, 8).join(", ")}` : r && r.super_speciality.confidence !== "Unverified" ? r.super_speciality.summary : "";
+  const toxItems = [...(rs?.red_flags ?? []), ...(rs?.cons ?? []).map((x) => x.text), ...(r?.cons ?? []).map((x) => x.text)].filter((t) => TOX.test(t));
+  const tox = [...new Set(toxItems)].slice(0, 3).join(" · ");
+  const hoursText = [rs?.hours_culture.summary ?? "", ...(rs?.hours_culture.items ?? []).map((i) => i.text), rs?.hands_on.summary ?? ""].join(" ");
+  const hours = [...new Set((hoursText.match(HOURS) ?? []).map((m) => m.trim()))].slice(0, 3).join(" · ");
+  const icuText = [hoursText, st?.anaesthesia_dept?.notes ?? "", st?.academics ?? ""].join(" ");
+  const icu = (icuText.match(/[^.]{0,60}\bICU\b[^.]{0,80}(?:week|posting|rotation|month)[^.]{0,40}/i) ?? [""])[0].trim();
+  const b = OFFICIAL[c.id]?.bond_doc; const bond = b && (b.service_years || b.service_bond || b.leaving_penalty) ? [b.service_years, b.service_bond, b.leaving_penalty && `leaving: ${b.leaving_penalty}`].filter(Boolean).join(" · ") : c.kind === "pdnb" ? "None (NBEMS rule)" : c.kind === "mhpriv" ? "None; 3 yrs' fee if you resign late" : "";
+  return { bond, stipend: money(stipend(c)) ?? "", hands, multi, tox, hours, icu };
+}
