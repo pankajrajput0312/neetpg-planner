@@ -32,6 +32,12 @@ export default function Page() {
   const [open, setOpen] = useState<string | null>(null);
   const [drag, setDrag] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
+  // ---- cross-device sync (Netlify function /api/sync) ----
+  const [syncSecret, setSyncSecret] = useState<string>("");
+  const [syncId, setSyncId] = useState<string>("");
+  const [syncMsg, setSyncMsg] = useState<string>("");
+  const [readOnly, setReadOnly] = useState<string | null>(null); // public id being viewed
+  const sha = async (t: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
   const [limit, setLimit] = useState(60);
   const [listView, setListView] = useState<"rows" | "cards">("rows");
   const [lf, setLf] = useState<{ state: string[]; kind: string[]; verdict: string[]; chance: string[]; min: string; max: string }>({ state: [], kind: [], verdict: [], chance: [], min: "", max: "" });
@@ -49,8 +55,45 @@ export default function Page() {
       }
     } catch {}
     setLoaded(true);
+    (async () => {
+      const view = new URLSearchParams(location.search).get("view");
+      if (view) {
+        setReadOnly(view); setSyncMsg("Loading shared lists…");
+        try { const r = await fetch(`/api/sync?id=${view}`); if (r.ok) { const j = await r.json(); setS({ ...DEFAULT, ...j.data }); setSyncMsg("Viewing shared lists (read-only) · updated " + new Date(j.updatedAt).toLocaleString()); } else setSyncMsg("Shared lists not found."); } catch { setSyncMsg("Could not load shared lists."); }
+        return;
+      }
+      let sec = ""; try { sec = localStorage.getItem("neetpg-sync-secret") ?? ""; } catch {}
+      if (sec) { setSyncSecret(sec); const id = await sha(sec); setSyncId(id); await pull(sec, id); }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { if (loaded) try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} }, [s, loaded]);
+  const pull = async (sec: string, id: string) => {
+    try {
+      const r = await fetch(`/api/sync?id=${id}`);
+      if (r.status === 404) { setSyncMsg("Sync on — nothing saved on the server yet; your changes will upload."); return; }
+      if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json(); let localAt = 0; try { localAt = +(localStorage.getItem("neetpg-sync-at") ?? 0); } catch {}
+      if (j.updatedAt > localAt) { setS({ ...DEFAULT, ...j.data }); try { localStorage.setItem("neetpg-sync-at", String(j.updatedAt)); } catch {} setSyncMsg("Synced from server · " + new Date(j.updatedAt).toLocaleString()); }
+      else setSyncMsg("Sync on · up to date");
+    } catch { setSyncMsg("Sync: server not reachable (works on the deployed site, not on localhost)"); }
+  };
+  const push = async (sec: string, data: Store) => {
+    try {
+      const r = await fetch("/api/sync", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ secret: sec, data }) });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json(); setSyncId(j.id); try { localStorage.setItem("neetpg-sync-at", String(j.updatedAt)); } catch {}
+      setSyncMsg("Saved to server · " + new Date(j.updatedAt).toLocaleTimeString());
+    } catch { setSyncMsg("Sync: could not save (server not reachable)"); }
+  };
+  const enableSync = async (sec: string) => {
+    if (sec.length < 8) { alert("Use at least 8 characters."); return; }
+    try { localStorage.setItem("neetpg-sync-secret", sec); } catch {}
+    setSyncSecret(sec); const id = await sha(sec); setSyncId(id); await pull(sec, id); await push(sec, s);
+  };
+  const disableSync = () => { try { localStorage.removeItem("neetpg-sync-secret"); } catch {} setSyncSecret(""); setSyncId(""); setSyncMsg("Sync off — data stays only in this browser."); };
+  useEffect(() => { if (loaded && !readOnly) try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} }, [s, loaded, readOnly]);
+  useEffect(() => { if (!loaded || readOnly || !syncSecret) return; const t = setTimeout(() => push(syncSecret, s), 1500); return () => clearTimeout(t); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s]);
   useEffect(() => { setLimit(60); }, [q, fState, fCoun, fKind, fChance, fVerdict, fRec, rk, onlyResearched, sort]);
 
   const up = (p: Partial<Store>) => setS((o) => ({ ...o, ...p }));
@@ -372,7 +415,21 @@ export default function Page() {
               <button onClick={() => { if (s.sets.length > 1 && confirm(`Delete “${set.name}”?`)) { const r = s.sets.filter((x) => x.id !== set.id); up({ sets: r, activeSet: r[0].id }); } }}>Delete</button>
             </div>
           </details>
+          <details className="weights sync"><summary>{readOnly ? "👁 Shared view" : syncSecret ? "☁ Sync on" : "☁ Sync / share"}</summary>
+            {readOnly ? <p className="small">{syncMsg} <br />Open the site without <code>?view=</code> to use your own planner.</p> : (<>
+              <p className="small muted">Use the same sync code on every device to see the same lists. Share the read-only link with anyone.</p>
+              <div className="row-btns">
+                <input type="text" placeholder="sync code (≥8 chars, keep it secret)" value={syncSecret} onChange={(e) => setSyncSecret(e.target.value)} style={{ flex: 1 }} />
+                <button onClick={() => { const c = Math.random().toString(36).slice(2, 10) + "-" + Math.random().toString(36).slice(2, 8); setSyncSecret(c); }}>Generate</button>
+                <button className="primary" onClick={() => enableSync(syncSecret)}>Enable sync</button>
+                {syncId && <button onClick={disableSync}>Turn off</button>}
+              </div>
+              {syncMsg && <p className="small">{syncMsg}</p>}
+              {syncId && (<p className="small">Read-only share link: <code>{`${typeof location !== "undefined" ? location.origin : ""}/?view=${syncId}`}</code> <button onClick={() => navigator.clipboard.writeText(`${location.origin}/?view=${syncId}`)}>Copy</button></p>)}
+            </>)}
+          </details>
         </div>
+        {readOnly && <div className="hint">👁 You are viewing someone's shared lists (read-only). Changes you make here are not saved.</div>}
         <nav>
           {([["explore", "Explore"], ["compare", `Compare (${cmp.length})`], ["saved", `Saved (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["decide", "Before you decide"]] as const).map(([k, l]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>))}

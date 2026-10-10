@@ -314,3 +314,5 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .card .actions button.primary { flex: 1 1 100%; padding: 10px; font-size: .95rem; }
 .card .actions button.star { flex: 1 1 0; }
 .actions .pos { flex: 0 0 60px; }
+.sync code { font-size: .8rem; word-break: break-all; }
+.sync[open] { min-width: 420px; }
