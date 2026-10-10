@@ -92,6 +92,11 @@ export default function Page() {
     setSyncSecret(sec); const id = await sha(sec); setSyncId(id); await pull(sec, id); await push(sec, s);
   };
   const disableSync = () => { try { localStorage.removeItem("neetpg-sync-secret"); } catch {} setSyncSecret(""); setSyncId(""); setSyncMsg("Sync off — data stays only in this browser."); };
+  useEffect(() => {
+    const h = document.querySelector("header.top"); if (!h) return;
+    const set = () => document.documentElement.style.setProperty("--topbar", h.getBoundingClientRect().height + "px");
+    const ro = new ResizeObserver(set); ro.observe(h); set(); return () => ro.disconnect();
+  }, []);
   useEffect(() => { if (loaded && !readOnly) try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} }, [s, loaded, readOnly]);
   useEffect(() => { if (!loaded || readOnly || !syncSecret) return; const t = setTimeout(() => push(syncSecret, s), 1500); return () => clearTimeout(t); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s]);
@@ -736,9 +741,10 @@ export default function Page() {
               <p className="muted small">Maharashtra first, then the other states in the order given. Each evidence cell starts with a label (green good · blue acceptable · amber caution · red problem · grey Missing = nothing verified) followed by the text found. A blank cell means nothing was verified — not that the answer is "no". Click a name for the full detail panel.</p>
             </section>
             <div className="ltwrap sheetwrap"><table className="lt sheet">
+              <colgroup>{[13, 13, 7, 7, 8, 7, 11, 11, 10, 7, 6].map((w, i) => <col key={i} style={{ width: w + "%" }} />)}</colgroup>
               <thead>
                 <tr className="seg"><th colSpan={2}></th><th colSpan={2}>Reach</th><th colSpan={2}>Money &amp; bond</th><th colSpan={2}>Training</th><th colSpan={3}>Daily life</th></tr>
-                <tr><th>College</th><th>Verdict · for you</th><th>Chance</th><th className="num">2025 closing</th><th>Bond</th><th>Stipend</th><th>Multispeciality exposure</th><th>Hands on</th><th>Toxicity (resignations / suicides / unknown deaths)</th><th>Working hours / day</th><th>ICU posting hrs / week</th></tr>
+                <tr><th>College</th><th>Verdict · for you</th><th>Chance</th><th className="num">2025 closing</th><th>Bond</th><th>Stipend</th><th>Multispeciality exposure</th><th>Hands on</th><th>Toxicity <span className="muted">(resignations / suicides / deaths)</span></th><th>Working hours / day</th><th>ICU posting hrs / week</th></tr>
               </thead>
               <tbody>{SHEET_STATES.map((st) => (<Fragment key={st}>
                 <tr className="stateh"><td colSpan={11}>{st}</td></tr>

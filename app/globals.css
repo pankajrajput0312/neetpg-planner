@@ -333,9 +333,19 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .sheet .cell-text div { margin-top: 2px; }
 
 /* Shortlist sheet: scroll inside the box so both header rows stay stuck; vertical grid lines */
-.sheetwrap { position: sticky; top: 132px; max-height: calc(100vh - 142px); overflow: auto; }  /* pinned under the 125px app bar */
-@media (max-width: 760px) { .sheetwrap { position: static; max-height: 75vh; } }
-.sheet thead { position: sticky; top: 0; z-index: 3; }
+/* Desktop: table fits the width, page scrolls, header row pinned under the sticky app bar (--topbar set from JS) */
+.sheetwrap { overflow: visible; }
+.sheet { table-layout: fixed; border-collapse: separate; border-spacing: 0; }  /* collapsed borders + sticky header lets rows bleed through in Chrome */
+.sheet th, .sheet th.num { white-space: normal; font-size: .68rem; letter-spacing: .04em; }
+.sheet thead tr.seg th { border-bottom: 2px solid var(--accent); }
+.sheet th, .sheet td, .sheet .cn, .sheet .cell-text { min-width: 0; max-width: none; white-space: normal; overflow-wrap: anywhere; }
+.sheet thead { position: sticky; top: var(--topbar, 125px); z-index: 4; box-shadow: 0 2px 0 var(--border); }
+/* Phone: too narrow to fit 11 columns — scroll inside the box, header sticks to the box top */
+@media (max-width: 900px) {
+  .sheetwrap { overflow: auto; max-height: 75vh; }
+  .sheet { table-layout: auto; } .sheet th, .sheet td { min-width: 140px; }
+  .sheet thead { top: 0; }
+}
 .sheet thead th { position: static; background: var(--surface-2); }
 .sheet thead tr.seg th { background: var(--surface); }
 .sheet th, .sheet td { border-right: 1px solid var(--border); }
