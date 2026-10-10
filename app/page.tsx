@@ -319,7 +319,7 @@ export default function Page() {
           </div>
 
           <h4>Senior's checklist — what to know before placing this college</h4>
-          <p className="legend muted"><span className="stdot have" /> already in the app (official data) · <span className="stdot partial" /> partly known — verify · <span className="stdot ask" /> not available online — <b>you</b> ask seniors/college, then tick it</p>
+          <p className="legend muted"><span className="stdot have" /> known from official data · <span className="stdot partial" /> partly known — verify · <span className="stdot ask" /> not available online — <b>you</b> ask seniors/college, then tick it</p>
           <table className="chk-t"><tbody>
             {seniorChecklist(c, s.cat, s.notes[c.id]).map((k) => {
               const done = (s.verified[c.id] ?? []).includes(k.label); const st = done ? "have" : k.status;
@@ -327,7 +327,7 @@ export default function Page() {
                 <tr key={k.label} className={"st-" + st}>
                   <td><span className="stdot" />{k.label}</td>
                   <td>{k.value}</td>
-                  <td className="small">{k.status === "have" ? <span className="muted">✓ in app</span> : (
+                  <td className="small">{k.status === "have" ? null : (
                     <label className="verify"><input type="checkbox" checked={done} onChange={() => up({ verified: { ...s.verified, [c.id]: done ? (s.verified[c.id] ?? []).filter((x) => x !== k.label) : [...(s.verified[c.id] ?? []), k.label] } })} />
                       {done ? "✓ you verified" : (k.status === "partial" ? "Verify: " : "Ask: ") + k.how}</label>)}</td>
                 </tr>);
