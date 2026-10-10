@@ -316,3 +316,4 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .actions .pos { flex: 0 0 60px; }
 .sync code { font-size: .8rem; word-break: break-all; }
 .sync[open] { min-width: 420px; }
+.airank td { vertical-align: top; } .airank .cn { min-width: 220px; } .airank ul { margin: 0; padding-left: 16px; } .airank li { margin-bottom: 3px; }

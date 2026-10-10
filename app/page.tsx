@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   BY_ID, COLLEGES, CRITS, DEFAULT, GUIDE, PREP, PRESETS, RESEARCH, ROUNDS, ROW_HELP, ROW_LABEL, STATE_ORDER,
   beds, bondShort, chance, evidence, money, coverage, deepest, fee, firstRound, fmt, gaps, isDnb, params, place, roundClose, score,
-  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS,
+  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank,
   type College, type Conf, type Crit, type Param, type Store, type Resident, type Prefs,
 } from "./lib";
 
@@ -16,7 +16,7 @@ const COV = coverage();
 export default function Page() {
   const [s, setS] = useState<Store>(DEFAULT);
   const [loaded, setLoaded] = useState(false);
-  const [tab, setTab] = useState<"explore" | "compare" | "saved" | "lists" | "decide">("explore");
+  const [tab, setTab] = useState<"explore" | "compare" | "saved" | "lists" | "ai" | "decide">("explore");
   const [onlySaved, setOnlySaved] = useState(false);
   const [q, setQ] = useState("");
   const [fState, setFState] = useState<string[]>([]);
@@ -431,7 +431,7 @@ export default function Page() {
         </div>
         {readOnly && <div className="hint">👁 You are viewing someone's shared lists (read-only). Changes you make here are not saved.</div>}
         <nav>
-          {([["explore", "Explore"], ["compare", `Compare (${cmp.length})`], ["saved", `Saved (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["decide", "Before you decide"]] as const).map(([k, l]) => (
+          {([["explore", "Explore"], ["compare", `Compare (${cmp.length})`], ["saved", `Saved (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["ai", "AI ranking"], ["decide", "Before you decide"]] as const).map(([k, l]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>))}
         </nav>
       </header>
@@ -557,7 +557,7 @@ export default function Page() {
               <select value={prefs.maxBondYears} onChange={(e) => setPrefs({ maxBondYears: +e.target.value })}><option value={0}>None</option><option value={1}>1 year</option><option value={2}>2 years</option><option value={5}>Any</option></select></label>
             <label>Minimum stipend (₹/month; blank = none)
               <input type="number" min={0} step={1000} value={prefs.minStipend ?? ""} onChange={(e) => setPrefs({ minStipend: e.target.value ? +e.target.value : null })} placeholder="e.g. 43000" /></label>
-            <label>Only these states (blank = your state order, all states)
+            <label>Only these states (blank = all states, in your order: Delhi, Maharashtra, UP, MP, Gujarat, Rajasthan, then the rest, J&K last)
               {multi("States allowed", prefs.states, states.map((x) => [x, x]), (v) => setPrefs({ states: v }))}</label>
           </div>
           <details><summary className="muted small">What you need before the list is final (documents & decisions)</summary>
@@ -577,7 +577,7 @@ export default function Page() {
           </div>
           {(() => { const ex = list.items.filter((id) => BY_ID.get(id) && excludedBy(BY_ID.get(id)!, prefs)).length; return ex ? <p className="small"><b>⚠ {ex} choice(s) break your own rules</b> (budget / DNB / bond / eligibility) — marked in the table.</p> : null; })()}
           {st.warn.length ? <ul>{st.warn.map((x) => <li key={x}>{x}</li>)}</ul> : list.items.length > 0 && <p className="muted">List mix looks healthy.</p>}
-          <p className="muted small"><b>Auto lists</b> = verdict “Join, after checks” first, then “Backup only”; within each, your state order (MH → Delhi → UP → MP → KA → GJ → RJ → KL → others), then the evidence score from your 5 priorities. North-East second-last, J&amp;K/Ladakh last. “Avoid” and out-of-reach seats are left out — reorder freely.</p>
+          <p className="muted small"><b>Auto lists</b> = verdict “Join, after checks” first, then “Backup only”; within each, your state order (Delhi → Maharashtra → UP → MP → Gujarat → Rajasthan → everything else, J&amp;K last), then the evidence score from your 5 priorities. “Avoid” and out-of-reach seats are left out — reorder freely.</p>
           <p className="muted small">Order by <b>preference</b>: counselling gives you the highest choice that's still available, so a dream college at #1 never hurts. Grab the ⠿ handle to drag a row, use ▲ ▼, or type a position number. Click a college name for full details.</p>
         </section>
         {list.items.length === 0 && <p className="empty">Empty list — add colleges from Explore or Compare.</p>}
@@ -663,6 +663,43 @@ export default function Page() {
           </div>
         )}
       </>)}
+
+      {tab === "ai" && (() => {
+        const mcc = aiRank("MCC", s.air, s.cat, prefs); const mh = prefs.mhEligible === "no" ? [] : aiRank("MH-CET", s.air, s.cat, prefs);
+        const useAs = (name: string, recs: typeof mcc) => { if (!confirm(`Create list “${name}” with these ${recs.length} colleges in this order?`)) return; const id = "ai-" + Date.now(); up({ lists: [{ id, name, items: recs.map((r) => r.id) }, ...s.lists], active: id }); setTab("lists"); };
+        const block = (title: string, recs: typeof mcc, listName: string) => (
+          <section className="panel">
+            <div className="row-btns" style={{ justifyContent: "space-between", alignItems: "center" }}><h2>{title} <span className="muted">({recs.length})</span></h2>{recs.length > 0 && <button className="primary" onClick={() => useAs(listName, recs)}>Use as my list</button>}</div>
+            {recs.length === 0 && <p className="muted">Nothing qualifies under your current rules (Build my list) at this AIR.</p>}
+            <div className="ltwrap"><table className="lt airank"><thead><tr><th>#</th><th>College</th><th>Tier</th><th className="num">Score</th><th>Why it is here</th><th>Check before locking</th></tr></thead><tbody>
+              {recs.map((r, i) => { const c = BY_ID.get(r.id)!; const ch = chance(c, s.air, s.cat); return (
+                <tr key={r.id}><td className="num"><b>{i + 1}</b></td>
+                  <td className="cn"><b onClick={() => setOpen(r.id)}>{shortName(c)}</b><small>{[place(c), c.state].filter(Boolean).join(", ")} · {typeLabel(c)}</small><br /><span className={"tag " + ch.k}>{ch.short}</span> <span className={"tag v-" + verdictKey(verdictOf(c).verdict)}>{verdictOf(c).verdict}</span></td>
+                  <td><span className={"tag " + (r.tier === "Safe" ? "good" : r.tier === "Core" ? "ok" : "mid")}>{r.tier}</span></td>
+                  <td className="num">{r.score}</td>
+                  <td className="small"><ul className="pros">{r.why.map((w, k) => <li key={k}>{w}</li>)}</ul></td>
+                  <td className="small"><ul className="cons">{r.watch.map((w, k) => <li key={k}>{w}</li>)}</ul></td></tr>); })}
+            </tbody></table></div>
+          </section>);
+        return (
+          <div className="decide">
+            <section className="panel">
+              <h2>AI recommended ranking — how it was decided</h2>
+              <p>Every college still in reach (closed within 10% of your AIR in 2025) and not “Avoid” is scored on <b>your five priorities in your order</b>, then ordered by score. The list is in <b>preference order</b>, not probability order — counselling gives the highest choice still available, so a “Dream” pick at #1 costs nothing, and the “Safe” picks lower down protect you.</p>
+              <ul>
+                <li><b>1. Super-speciality (up to 40 points)</b> — official DM/MCh/DNB-SS courses listed by MCC for 2025 count most (a running course proves the department exists); hospital-site or research claims count less.</li>
+                <li><b>2. Hands-on (up to 20)</b> — resident/alumni/department evidence; wording like “observe only” or “consultant-led” scores low.</li>
+                <li><b>3. Hours &amp; toxicity (up to 20)</b> — documented harassment, suicides, strikes or unpaid stipend pull the score down hard.</li>
+                <li><b>4. DNB pass rate</b> — never published per institute, so it is neutral and listed as a question to ask.</li>
+                <li><b>5. Bond (up to 10)</b> — no bond 10, one year 6, two or more 2. Fees above ₹12 L/yr and stipends under ₹50k are flagged; “Backup only” verdicts lose 12.</li>
+                <li>Your state order adds at most 6 points, so geography breaks ties but never beats evidence. Your rules in <b>Build my list</b> (budget, DNB, bond, eligibility) are applied first.</li>
+              </ul>
+              <p className="muted small">Tiers: <b>Safe</b> = reached your AIR in both 2024 and 2025 · <b>Core</b> = reached in 2025 only · <b>Dream</b> = within 10% of the 2025 closing. Scores change when you edit your rules or AIR. The “Check before locking” column is what only seniors or the college can answer.</p>
+            </section>
+            {block("MCC counselling (AIQ · deemed · DNB)", mcc, "AI: MCC")}
+            {prefs.mhEligible !== "no" && block("Maharashtra state quota (only if you are eligible)", mh, "AI: Maharashtra state")}
+          </div>);
+      })()}
 
       {tab === "decide" && (
         <div className="decide">

@@ -51,8 +51,9 @@ export const COLLEGES = data.colleges as College[];
 export const BY_ID = new Map(COLLEGES.map((c) => [c.id, c]));
 export const RESEARCH = researchData as unknown as Record<string, Research>;
 export const GUIDE = guideData as Guide;
-// Her order: preferred 8 → others → North-East → Jammu & Kashmir (Ladakh kept with J&K at the bottom).
-export const STATE_ORDER: string[] = [...data.stateOrder.filter((x) => x !== "Ladakh" && x !== "Jammu and Kashmir"), "Ladakh", "Jammu and Kashmir"];
+// Her order (updated): Delhi → Maharashtra → UP → MP → Gujarat → Rajasthan → everything else → Jammu & Kashmir / Ladakh last.
+export const PREFERRED = ["Delhi", "Maharashtra", "Uttar Pradesh", "Madhya Pradesh", "Gujarat", "Rajasthan"];
+export const STATE_ORDER: string[] = [...PREFERRED, ...data.stateOrder.filter((x) => !PREFERRED.includes(x) && x !== "Ladakh" && x !== "Jammu and Kashmir"), "Ladakh", "Jammu and Kashmir"];
 const NE = ["Assam", "Tripura", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Arunachal Pradesh", "Sikkim"];
 const region = (st: string) => (st === "Jammu and Kashmir" || st === "Ladakh" ? 2 : NE.includes(st) ? 1 : 0);
 export const CRITS: [Crit, string, keyof Research, string][] = [
@@ -361,3 +362,60 @@ export function autoList(counselling: string, air: number, cat: string, w: Weigh
     .sort((a, b) => region(a.state) - region(b.state) || tier(a) - tier(b) || STATE_ORDER.indexOf(a.state) - STATE_ORDER.indexOf(b.state) || autoScore(b, w) - autoScore(a, w))
     .map((c) => c.id);
 }
+
+// ---------- AI recommended ranking (her 5 priorities, in order, from the evidence in this app) ----------
+export type Rec = { id: string; score: number; tier: "Dream" | "Core" | "Safe"; why: string[]; watch: string[] };
+const CONFV: Record<string, number> = { High: 3, Medium: 2, Low: 1, Unverified: 0 };
+const DEAL = /suicide|harass|assault|unpaid|not paid|withh|ragging|threat culture|strike/i;
+export function aiRank(counselling: string, air: number, cat: string, p: Prefs): Rec[] {
+  const out: Rec[] = [];
+  for (const c of COLLEGES) {
+    if (c.counselling !== counselling) continue;
+    const ch = chance(c, air, cat); if (ch.k === "bad") continue;
+    const v = verdictOf(c); if (v.verdict === "Avoid" || v.verdict === "Not assessed") continue;
+    if (excludedBy(c, p)) continue;
+    const why: string[] = [], watch: string[] = []; let score = 0;
+    // 1. super-speciality (max 40)
+    const sp = SUPERSPEC[c.id]; const r = RESEARCH[c.id]; const rs = RESIDENT[c.id]; const st = SITES[c.id];
+    const strong = sp ? Object.keys(sp.areas).filter((a) => ["Cardiac", "Neuro", "Renal/Transplant", "GI surgery", "Onco", "Paeds"].includes(a)) : [];
+    if (sp) { score += Math.min(40, 16 + strong.length * 4); why.push(`Priority 1 · official DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025) — proof those departments function.`); }
+    else if (r && r.super_speciality.confidence !== "Unverified") { score += 10 + CONFV[r.super_speciality.confidence] * 4; why.push(`Priority 1 · ${r.super_speciality.summary.slice(0, 140)} [${r.super_speciality.confidence.toLowerCase()} evidence]`); }
+    else { watch.push("Priority 1 · no super-speciality department could be verified — ask which OTs PGs actually rotate through."); }
+    if (st?.icu_beds || st?.ot_count) why.push(`Hospital site: ${[st.icu_beds && `ICU ${st.icu_beds}`, st.ot_count && `OT ${st.ot_count}`].filter(Boolean).join(" · ")}.`);
+    // 2. hands-on (max 20)
+    if (rs && rs.hands_on.confidence !== "Unverified") {
+      const neg = /observ|limited|no hands|restricted|consultant-led|clerical/i.test(rs.hands_on.summary);
+      score += neg ? 4 : 8 + CONFV[rs.hands_on.confidence] * 4;
+      (neg ? watch : why).push(`Priority 2 · ${rs.hands_on.summary.slice(0, 150)} [${rs.hands_on.confidence.toLowerCase()}]`);
+    } else watch.push("Priority 2 · hands-on volume not verifiable online — the key question for seniors.");
+    // 3. hours / toxicity (max 20)
+    const flags = (rs?.red_flags ?? []).filter((f) => DEAL.test(f));
+    if (flags.length) { score += 2; watch.push(`Priority 3 · ${flags[0].slice(0, 150)}`); }
+    else if (rs && rs.hours_culture.confidence !== "Unverified") { score += 10 + CONFV[rs.hours_culture.confidence] * 3; why.push(`Priority 3 · ${rs.hours_culture.summary.slice(0, 140)} [${rs.hours_culture.confidence.toLowerCase()}]`); }
+    else { score += 8; watch.push("Priority 3 · no reports either way on duty hours — ask residents about 24-h duties and post-call off."); }
+    // 4. DNB pass (neutral)
+    if (isDnb(c)) watch.push("Priority 4 · NBEMS publishes no institute pass rate — ask the department for the last 3 batches.");
+    // 5. bond (max 10) + money realism
+    const by = bondYears(c);
+    if (by === 0) { score += 10; why.push("Priority 5 · no service bond" + (c.kind === "mhpriv" ? " (3 years' fee if you resign after the cut-off)" : "") + "."); }
+    else if (by === 1) { score += 6; why.push(`Priority 5 · 1-year service bond: ${bondShort(c)}.`); }
+    else if (by !== null) { score += 2; watch.push(`Priority 5 · service bond ${bondShort(c)}.`); }
+    else watch.push("Priority 5 · bond terms not verified — read the college's bond PDF on MCC.");
+    const f = feeNum(c), stp = stipendNum(c);
+    if (f && f >= 2.5e6) { score -= 8; watch.push(`Cost · about ${money(fee(c))}/yr (≈ ${lakh(f * 3)} for 3 years).`); }
+    else if (f && f >= 1.2e6) { score -= 3; watch.push(`Cost · ${money(fee(c))}/yr.`); }
+    else if (isDnb(c)) why.push("Cost · DNB fee ₹1.25 L/yr.");
+    if (stp && stp >= 70000) why.push(`Stipend ₹${stp.toLocaleString("en-IN")}/month (official declaration).`);
+    else if (stp && stp < 50000) watch.push(`Stipend only ₹${stp.toLocaleString("en-IN")}/month declared.`);
+    if (v.verdict === "Backup only") { score -= 12; watch.push(`Verdict "Backup only": ${v.headline}`); } else why.unshift(`Verdict: ${v.verdict} — ${v.headline}`);
+    // chance → tier, and a line on reachability
+    const d25 = deepest(c, "2025", cat), d24 = deepest(c, "2024", cat);
+    const tier: Rec["tier"] = ch.k === "good" ? "Safe" : ch.k === "ok" ? "Core" : "Dream";
+    why.push(ch.k === "good" ? `Reach · ${ch.t} (2025 closing ${fmt(d25)}, 2024 ${fmt(d24)}).` : ch.k === "ok" ? `Reach · ${ch.t} (closing ${fmt(d25)}); not reached in 2024 (${fmt(d24)}).` : `Reach · borderline: 2025 closing ${fmt(d25)} vs your ${fmt(air)} — a free shot at the top of the list.`);
+    // state preference tie-break (small, so it never beats evidence)
+    const si = STATE_ORDER.indexOf(c.state); score += Math.max(0, 6 - si * 0.5);
+    out.push({ id: c.id, score: Math.round(score), tier, why, watch });
+  }
+  return out.sort((a, b) => b.score - a.score || STATE_ORDER.indexOf(BY_ID.get(a.id)!.state) - STATE_ORDER.indexOf(BY_ID.get(b.id)!.state));
+}
+const lakh = (n: number) => (n >= 1e7 ? `₹${(n / 1e7).toFixed(2)} Cr` : `₹${(n / 1e5).toFixed(0)} L`);
