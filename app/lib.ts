@@ -367,7 +367,7 @@ export function autoList(counselling: string, air: number, cat: string, w: Weigh
 export type Rec = { id: string; score: number; tier: "Dream" | "Core" | "Safe"; why: string[]; watch: string[] };
 const CONFV: Record<string, number> = { High: 3, Medium: 2, Low: 1, Unverified: 0 };
 const DEAL = /suicide|harass|assault|unpaid|not paid|withh|ragging|threat culture|strike/i;
-export function aiRank(counselling: string, air: number, cat: string, p: Prefs): Rec[] {
+export function aiRank(counselling: string, air: number, cat: string, p: Prefs, stateWeight = 6): Rec[] {
   const out: Rec[] = [];
   for (const c of COLLEGES) {
     if (c.counselling !== counselling) continue;
@@ -413,7 +413,8 @@ export function aiRank(counselling: string, air: number, cat: string, p: Prefs):
     const tier: Rec["tier"] = ch.k === "good" ? "Safe" : ch.k === "ok" ? "Core" : "Dream";
     why.push(ch.k === "good" ? `Reach · ${ch.t} (2025 closing ${fmt(d25)}, 2024 ${fmt(d24)}).` : ch.k === "ok" ? `Reach · ${ch.t} (closing ${fmt(d25)}); not reached in 2024 (${fmt(d24)}).` : `Reach · borderline: 2025 closing ${fmt(d25)} vs your ${fmt(air)} — a free shot at the top of the list.`);
     // state preference tie-break (small, so it never beats evidence)
-    const si = STATE_ORDER.indexOf(c.state); score += Math.max(0, 6 - si * 0.5);
+    const si = STATE_ORDER.indexOf(c.state); const pi = PREFERRED.indexOf(c.state);
+    score += pi >= 0 ? stateWeight * (1 - pi / (PREFERRED.length + 1)) : si >= STATE_ORDER.length - 2 ? -stateWeight : 0; // preferred states earn up to stateWeight; J&K/Ladakh lose it
     out.push({ id: c.id, score: Math.round(score), tier, why, watch });
   }
   return out.sort((a, b) => b.score - a.score || STATE_ORDER.indexOf(BY_ID.get(a.id)!.state) - STATE_ORDER.indexOf(BY_ID.get(b.id)!.state));

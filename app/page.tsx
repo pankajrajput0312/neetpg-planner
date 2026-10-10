@@ -37,6 +37,7 @@ export default function Page() {
   const [syncId, setSyncId] = useState<string>("");
   const [syncMsg, setSyncMsg] = useState<string>("");
   const [readOnly, setReadOnly] = useState<string | null>(null); // public id being viewed
+  const [stateWeight, setStateWeight] = useState(12);
   const sha = async (t: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)))).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
   const [limit, setLimit] = useState(60);
   const [listView, setListView] = useState<"rows" | "cards">("rows");
@@ -665,7 +666,7 @@ export default function Page() {
       </>)}
 
       {tab === "ai" && (() => {
-        const mcc = aiRank("MCC", s.air, s.cat, prefs); const mh = prefs.mhEligible === "no" ? [] : aiRank("MH-CET", s.air, s.cat, prefs);
+        const mcc = aiRank("MCC", s.air, s.cat, prefs, stateWeight); const mh = prefs.mhEligible === "no" ? [] : aiRank("MH-CET", s.air, s.cat, prefs, stateWeight);
         const useAs = (name: string, recs: typeof mcc) => { if (!confirm(`Create list “${name}” with these ${recs.length} colleges in this order?`)) return; const id = "ai-" + Date.now(); up({ lists: [{ id, name, items: recs.map((r) => r.id) }, ...s.lists], active: id }); setTab("lists"); };
         const block = (title: string, recs: typeof mcc, listName: string) => (
           <section className="panel">
@@ -692,8 +693,9 @@ export default function Page() {
                 <li><b>3. Hours &amp; toxicity (up to 20)</b> — documented harassment, suicides, strikes or unpaid stipend pull the score down hard.</li>
                 <li><b>4. DNB pass rate</b> — never published per institute, so it is neutral and listed as a question to ask.</li>
                 <li><b>5. Bond (up to 10)</b> — no bond 10, one year 6, two or more 2. Fees above ₹12 L/yr and stipends under ₹50k are flagged; “Backup only” verdicts lose 12.</li>
-                <li>Your state order adds at most 6 points, so geography breaks ties but never beats evidence. Your rules in <b>Build my list</b> (budget, DNB, bond, eligibility) are applied first.</li>
+                <li>Your state order (Delhi → Maharashtra → UP → MP → Gujarat → Rajasthan → rest, J&amp;K last) adds points set by the slider below. Your rules in <b>Build my list</b> (budget, DNB, bond, eligibility) are applied first.</li>
               </ul>
+              <label className="w" style={{ maxWidth: 520 }}>How much should your state order matter? <input type="range" min={0} max={40} value={stateWeight} onChange={(e) => setStateWeight(+e.target.value)} /> <b>{stateWeight === 0 ? "evidence only" : stateWeight <= 10 ? "tie-break" : stateWeight <= 25 ? "balanced" : "state first"}</b></label>
               <p className="muted small">Tiers: <b>Safe</b> = reached your AIR in both 2024 and 2025 · <b>Core</b> = reached in 2025 only · <b>Dream</b> = within 10% of the 2025 closing. Scores change when you edit your rules or AIR. The “Check before locking” column is what only seniors or the college can answer.</p>
             </section>
             {block("MCC counselling (AIQ · deemed · DNB)", mcc, "AI: MCC")}
