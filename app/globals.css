@@ -336,7 +336,7 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .sheetwrap { overflow: visible; }
 .sheet { table-layout: fixed; border-collapse: separate; border-spacing: 0; }  /* collapsed borders + sticky header lets rows bleed through in Chrome */
 .sheet th, .sheet th.num { white-space: normal; font-size: .68rem; letter-spacing: .04em; }
-.sheet th, .sheet td, .sheet .cn, .sheet .cell-text { min-width: 0; max-width: none; white-space: normal; overflow-wrap: anywhere; }
+.sheet th, .sheet td, .sheet .cn, .sheet .cell-text { min-width: 0; max-width: none; white-space: normal; overflow-wrap: break-word; hyphens: auto; }
 .sheet thead { position: sticky; top: 0; z-index: 4; box-shadow: 0 2px 0 var(--border); }
 /* Phone: too narrow to fit 11 columns — scroll inside the box, header sticks to the box top */
 @media (max-width: 900px) {
@@ -348,3 +348,4 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .sheet th, .sheet td { border-right: 1px solid var(--border); }
 .sheet th:last-child, .sheet td:last-child { border-right: 0; }
 .sheet thead tr:last-child th { border-bottom: 2px solid var(--border); }
+.sheet .clamp { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }  /* full text: hover, or the detail panel */

@@ -112,6 +112,12 @@ export type ToxHours = { toxicity: ToxField; hours_per_day: ToxField; icu_per_we
 export const TOXHOURS = toxhoursData as Record<string, ToxHours>;
 export const toxFor = (key: string) => TOXHOURS[key];
 export const REC_KEY: Record<string, string> = { "Put high": "join", "Backup only": "backup", "Leave out": "avoid" };
+// What to do with the college in her choice list, in words anyone can read
+export function placeText(c: College) {
+  const r = recommendation(c);
+  return r.rec === "Put high" ? "Put high in her list" : r.rec === "Backup only" ? "Keep lower, as a backup" : /out of reach/i.test(r.rec_why ?? "") ? "Leave out — out of her rank range" : "Leave out — has a deal-breaker";
+}
+export const CHANCE_TEXT: Record<string, string> = { good: "Reached her rank in both 2024 & 2025", ok: "Reached her rank in 2025 only", mid: "Missed her rank by less than 10% in 2025", bad: "Closed well before her rank" };
 export const recommendation = (c: College) => DERIVED[c.id] ?? { pros: [], cons: [], facts: {}, rec: "Backup only", rec_why: "No data", data_verdict: null };
 export type ProCon = { text: string; src: string; url?: string };
 function tagOf(t: string): [string, string] { const m = t.match(/\s\[(\w+)\]$/); return m ? [t.slice(0, m.index), m[1]] : [t, "official"]; }
@@ -434,31 +440,31 @@ export function priorityLabels(c: College): PLabel[] {
   const strong = sp ? Object.keys(sp.areas).filter((a) => ["Cardiac", "Neuro", "Renal/Transplant", "GI surgery", "Onco", "Paeds"].includes(a)) : [];
   const ssc = r?.super_speciality.confidence ?? "Unverified";
   const siteDepts = st ? st.departments.filter((d) => /cardiac|ctvs|neuro|transplant|onco|paedi|pedi|nicu|picu/i.test(d)).length : 0;
-  const ss: PLabel = sp && strong.length >= 3 ? { n: 1, key: "Super-spec", label: `High exposure (${strong.length} core SS, official)`, level: "good", tip: `DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025)` }
-    : sp ? { n: 1, key: "Super-spec", label: `Medium exposure (official: ${Object.keys(sp.areas).join(", ")})`, level: "ok", tip: "Official courses in fewer than 3 core areas" }
-    : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: `Medium exposure (${siteDepts} SS depts on site)`, level: "ok", tip: st!.departments.join(", ") }
-    : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Medium exposure (reported)", level: "ok", tip: r!.super_speciality.summary }
-    : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Low exposure", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
-    : { n: 1, key: "Super-spec", label: "Missing", level: "none", tip: "No department could be verified" };
+  const ss: PLabel = sp && strong.length >= 3 ? { n: 1, key: "Super-spec", label: `High — ${strong.length} super-speciality depts, officially confirmed`, level: "good", tip: `DM/MCh/DNB-SS courses running in ${Object.keys(sp.areas).join(", ")} (MCC NEET-SS 2025)` }
+    : sp ? { n: 1, key: "Super-spec", label: `Medium — only ${Object.keys(sp.areas).join(", ")} (officially confirmed)`, level: "ok", tip: "Official courses in fewer than 3 core areas" }
+    : siteDepts >= 3 ? { n: 1, key: "Super-spec", label: `Medium — ${siteDepts} super-speciality depts, hospital's own claim`, level: "ok", tip: st!.departments.join(", ") }
+    : ssc === "High" || ssc === "Medium" ? { n: 1, key: "Super-spec", label: "Medium — mentioned online, not confirmed", level: "ok", tip: r!.super_speciality.summary }
+    : ssc === "Low" || siteDepts > 0 ? { n: 1, key: "Super-spec", label: "Low — little super-speciality work", level: "mid", tip: r?.super_speciality.summary ?? st?.departments.join(", ") ?? "" }
+    : { n: 1, key: "Super-spec", label: "Missing — nothing found online", level: "none", tip: "No department could be verified" };
   const hs = rs?.hands_on; const neg = hs ? /observ|limited|no hands|restricted|consultant-led|clerical/i.test(hs.summary) : false;
-  const ho: PLabel = hs && hs.confidence !== "Unverified" ? (neg ? { n: 2, key: "Hands-on", label: "Observation-heavy", level: "bad", tip: hs.summary } : hs.confidence === "Low" ? { n: 2, key: "Hands-on", label: "Some reports (weak)", level: "mid", tip: hs.summary } : { n: 2, key: "Hands-on", label: "Good (reported)", level: "good", tip: hs.summary })
-    : r && r.hands_on.confidence !== "Unverified" ? { n: 2, key: "Hands-on", label: "Some evidence", level: "ok", tip: r.hands_on.summary }
-    : (st?.anaesthesia_dept?.services.length ?? 0) > 0 ? { n: 2, key: "Hands-on", label: "Dept page only", level: "mid", tip: st!.anaesthesia_dept!.services.join(", ") }
-    : { n: 2, key: "Hands-on", label: "Missing", level: "none", tip: "Nothing online; only residents can tell you" };
+  const ho: PLabel = hs && hs.confidence !== "Unverified" ? (neg ? { n: 2, key: "Hands-on", label: "Poor — residents mostly watch", level: "bad", tip: hs.summary } : hs.confidence === "Low" ? { n: 2, key: "Hands-on", label: "Unclear — just one anonymous post", level: "mid", tip: hs.summary } : { n: 2, key: "Hands-on", label: "Good — residents say they do cases", level: "good", tip: hs.summary })
+    : r && r.hands_on.confidence !== "Unverified" ? { n: 2, key: "Hands-on", label: "Some — reported, but not by residents", level: "ok", tip: r.hands_on.summary }
+    : (st?.anaesthesia_dept?.services.length ?? 0) > 0 ? { n: 2, key: "Hands-on", label: "Unclear — no resident has said", level: "mid", tip: st!.anaesthesia_dept!.services.join(", ") }
+    : { n: 2, key: "Hands-on", label: "Missing — nothing found online", level: "none", tip: "Nothing online; only residents can tell you" };
   const flags = (rs?.red_flags ?? []).filter((f) => /suicide|harass|assault|unpaid|not paid|withh|ragging|threat culture|strike/i.test(f));
   const hc = rs?.hours_culture;
   const tx = TOXHOURS[c.id]?.toxicity; const cnt = tx?.count ?? {}; const serious = (cnt.suicides ?? 0) + (cnt.unknown_deaths ?? 0); const minor = (cnt.strikes ?? 0) + (cnt.harassment ?? 0) + (cnt.resignations ?? 0);
-  const hr: PLabel = tx && tx.cell && serious > 0 ? { n: 3, key: "Hours", label: `${serious} death(s) reported`, level: "bad", tip: tx.cell }
-    : tx && tx.cell && minor > 0 ? { n: 3, key: "Hours", label: "Concerns reported", level: "mid", tip: tx.cell }
-    : tx && /nothing adverse/i.test(tx.cell) && !flags.length ? { n: 3, key: "Hours", label: "Nothing adverse online", level: "ok", tip: tx.cell }
-    : flags.length && hc && CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Serious concerns", level: "bad", tip: flags[0] }
-    : flags.length ? { n: 3, key: "Hours", label: "Concerns reported", level: "mid", tip: flags[0] }
-    : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Reported OK", level: "good", tip: hc.summary } : { n: 3, key: "Hours", label: "Mixed / thin", level: "mid", tip: hc.summary })
-    : r && r.toxicity.confidence !== "Unverified" ? { n: 3, key: "Hours", label: "Some reports", level: "ok", tip: r.toxicity.summary }
-    : { n: 3, key: "Hours", label: "Missing", level: "none", tip: "No reports either way" };
-  const dnb: PLabel = isDnb(c) ? { n: 4, key: "DNB pass", label: "Missing", level: "none", tip: "NBEMS publishes no institute-wise pass rate; ask for the last 3 batches" } : { n: 4, key: "DNB pass", label: "n/a (MD)", level: "ok", tip: "MD — pass rate not part of your criteria" };
+  const hr: PLabel = tx && tx.cell && serious > 0 ? { n: 3, key: "Hours", label: serious > 1 ? `Red flag — ${serious} deaths reported` : "Red flag — a death reported", level: "bad", tip: tx.cell }
+    : tx && tx.cell && minor > 0 ? { n: 3, key: "Hours", label: "Caution — strike / harassment reported", level: "mid", tip: tx.cell }
+    : tx && /nothing adverse/i.test(tx.cell) && !flags.length ? { n: 3, key: "Hours", label: "OK — nothing bad found online", level: "ok", tip: tx.cell }
+    : flags.length && hc && CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Red flag — serious resident complaints", level: "bad", tip: flags[0] }
+    : flags.length ? { n: 3, key: "Hours", label: "Caution — resident complaints", level: "mid", tip: flags[0] }
+    : hc && hc.confidence !== "Unverified" ? (CONFV[hc.confidence] >= 2 ? { n: 3, key: "Hours", label: "Good — residents report sane hours", level: "good", tip: hc.summary } : { n: 3, key: "Hours", label: "Unclear — just one anonymous post", level: "mid", tip: hc.summary })
+    : r && r.toxicity.confidence !== "Unverified" ? { n: 3, key: "Hours", label: "Unclear — some reports, read the text", level: "ok", tip: r.toxicity.summary }
+    : { n: 3, key: "Hours", label: "Missing — nothing found online", level: "none", tip: "No reports either way" };
+  const dnb: PLabel = isDnb(c) ? { n: 4, key: "DNB pass", label: "Missing — NBEMS does not publish it", level: "none", tip: "NBEMS publishes no institute-wise pass rate; ask for the last 3 batches" } : { n: 4, key: "DNB pass", label: "Not needed — MD seat", level: "ok", tip: "MD — pass rate not part of your criteria" };
   const by = bondYears(c);
-  const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "None", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1 yr", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by} yrs`, level: "bad", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Missing", level: "none", tip: strip(c.bond).slice(0, 120) };
+  const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "No bond", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1-year bond", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by}-year bond`, level: "bad", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Missing — bond not confirmed", level: "none", tip: strip(c.bond).slice(0, 120) };
   return [ss, ho, hr, dnb, bd];
 }
 
@@ -478,7 +484,7 @@ export function sheetRow(c: College) {
   const hours = [...new Set((hoursText.match(HOURS) ?? []).map((m) => m.trim()))].slice(0, 3).join(" · ");
   const icuText = [hoursText, st?.anaesthesia_dept?.notes ?? "", st?.academics ?? ""].join(" ");
   const icu = (icuText.match(/[^.]{0,60}\bICU\b[^.]{0,80}(?:week|posting|rotation|month)[^.]{0,40}/i) ?? [""])[0].trim();
-  const b = OFFICIAL[c.id]?.bond_doc; const bond = b && (b.service_years || b.service_bond || b.leaving_penalty) ? [b.service_years, b.service_bond, b.leaving_penalty && `leaving: ${b.leaving_penalty}`].filter(Boolean).join(" · ") : c.kind === "pdnb" ? "None (NBEMS rule)" : c.kind === "mhpriv" ? "None; 3 yrs' fee if you resign late" : "";
+  const b = OFFICIAL[c.id]?.bond_doc; const bond = b && (b.service_years || b.service_bond || b.leaving_penalty) ? [b.service_years, b.service_bond, b.leaving_penalty && `leaving: ${b.leaving_penalty}`].filter(Boolean).join(" · ") : c.kind === "pdnb" ? "Private DNB hospitals can't take a bond (NBEMS rule)" : c.kind === "mhpriv" ? "None; 3 yrs' fee if you resign late" : "";
   const t = TOXHOURS[c.id];
   return { bond, stipend: money(stipend(c)) ?? "", hands, multi, tox: t?.toxicity.cell || tox, hours: t?.hours_per_day.cell || hours, icu: t?.icu_per_week.cell || icu };
 }

@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   BY_ID, COLLEGES, CRITS, DEFAULT, GUIDE, PREP, PRESETS, RESEARCH, ROUNDS, ROW_HELP, ROW_LABEL, STATE_ORDER,
   beds, bondShort, chance, evidence, money, coverage, deepest, fee, firstRound, fmt, gaps, isDnb, params, place, roundClose, score,
-  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels, SHEET, SHEET_STATES, sheetRow, toxFor,
+  shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels, SHEET, SHEET_STATES, sheetRow, toxFor, placeText, CHANCE_TEXT,
   type College, type Conf, type Crit, type Param, type Store, type Resident, type Prefs,
 } from "./lib";
 
@@ -725,7 +725,7 @@ export default function Page() {
             lines.push([st, row.given, c ? verdictOf(c).verdict : "", c ? recommendation(c).rec : "", c ? chance(c, s.air, s.cat).short : "", c ? deepest(c, "2025", s.cat) : "",
               d && `${L![4].label} — ${d.bond}`, d?.stipend, d && `${L![1].label} — ${d.hands}`, d && `${L![0].label} — ${d.multi}`, d && `${L![2].label} — ${d.tox}`, d?.hours, d?.icu].map(esc).join(",")); }
           download("shortlist-sheet.csv", lines.join("\n"), "text/csv"); };
-        const cell = (l: ReturnType<typeof priorityLabels>[number] | null, text: string) => (<td className="small cell-text">{l && <span className={"pl inline " + l.level} title={l.tip}>{l.label}</span>}{text && <div>{text}</div>}</td>);
+        const cell = (l: ReturnType<typeof priorityLabels>[number] | null, text: string) => { const t = /^nothing adverse found online\.?$/i.test(text.trim()) ? "" : text; return (<td className="small cell-text">{l && <span className={"pl inline " + l.level} title={l.tip}>{l.label}</span>}{t && <div className="clamp" title={t}>{t}</div>}</td>); };
         const counts = { join: 0, check: 0, backup: 0, avoid: 0, na: 0 };
         SHEET.forEach((row) => { const c = row.id ? BY_ID.get(row.id) : null; counts[(c ? verdictKey(verdictOf(c).verdict) : "na") as keyof typeof counts]++; });
         return (
@@ -733,20 +733,20 @@ export default function Page() {
             <section className="strategy">
               <div className="row-btns" style={{ justifyContent: "space-between", alignItems: "center" }}><h2>Shortlist sheet <span className="muted">({SHEET.length} colleges)</span></h2><div className="row-btns"><a className="btn" href="/NEETPG_Anaesthesia_Shortlist_Sheet.xlsx" download>Download Excel</a><button onClick={csv}>Export CSV</button></div></div>
               <div className="mix"><span className="tag v-join">✓ Join {counts.join}</span><span className="tag v-backup">Backup only {counts.backup}</span><span className="tag v-avoid">Avoid {counts.avoid}</span><span className="tag v-na">Not assessed / not in data {counts.na}</span></div>
-              <p className="muted small">Maharashtra first, then the other states in the order given. Each evidence cell starts with a label (green good · blue acceptable · amber caution · red problem · grey Missing = nothing verified) followed by the text found. A blank cell means nothing was verified — not that the answer is "no". Click a name for the full detail panel.</p>
+              <p className="muted small">Maharashtra first, then the other states in the order given. Green = good · blue = OK · amber = caution · red = problem · grey = nothing found online. Blank = not found, not "no". Click a college name for sources.</p>
             </section>
             <div className="ltwrap sheetwrap"><table className="lt sheet">
               <colgroup>{[13, 13, 7, 7, 8, 7, 11, 11, 10, 7, 6].map((w, i) => <col key={i} style={{ width: w + "%" }} />)}</colgroup>
               <thead>
-                <tr><th>College</th><th>Verdict · for you</th><th>Chance</th><th className="num">2025 closing</th><th>Bond</th><th>Stipend</th><th>Multispeciality exposure</th><th>Hands on</th><th>Toxicity <span className="muted">(resignations / suicides / deaths)</span></th><th>Working hours / day</th><th>ICU posting hrs / week</th></tr>
+                <tr><th>College</th><th>Verdict · where to place it</th><th>Chance</th><th className="num">2025 closing</th><th>Bond</th><th>Stipend</th><th>Multispeciality exposure</th><th>Hands on</th><th>Toxicity <span className="muted">(resignations / suicides / deaths)</span></th><th>Working hours / day</th><th>ICU posting hrs / week</th></tr>
               </thead>
               <tbody>{SHEET_STATES.map((st) => (<Fragment key={st}>
                 <tr className="stateh"><td colSpan={11}>{st}</td></tr>
                 {SHEET.filter((x) => x.state === st).map((row) => { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null; const L = c ? priorityLabels(c) : null; const v = c ? verdictOf(c) : null; const ch = c ? chance(c, s.air, s.cat) : null; return (
                   <tr key={row.given}>
                     <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{row.given}</b> : <b className="muted">{row.given}</b>}<small>{c ? `${shortName(c)} · ${typeLabel(c)}` : "not in app data"}</small></td>
-                    <td>{v && <><span className={"vtag v-" + verdictKey(v.verdict)} title={v.headline}>{v.verdict}</span><br /><small className={"r-" + REC_KEY[recommendation(c!).rec]} style={{ padding: "1px 6px", borderRadius: 6 }}>{recommendation(c!).rec}</small><div className="small muted" style={{ marginTop: 4, maxWidth: 220 }}>{v.headline}</div></>}</td>
-                    <td>{ch && <span className={"pill " + ch.k} title={ch.t}>{ch.short}</span>}</td>
+                    <td>{v && <><span className={"vtag v-" + verdictKey(v.verdict)} title={v.headline}>{v.verdict}</span><br /><small className={"r-" + REC_KEY[recommendation(c!).rec]} style={{ padding: "1px 6px", borderRadius: 6 }}>{placeText(c!)}</small><div className="small muted" style={{ marginTop: 4, maxWidth: 220 }}>{v.headline}</div></>}</td>
+                    <td>{ch && <><span className={"pill " + ch.k} title={ch.t}>{ch.short}</span><div className="small muted" style={{ marginTop: 4 }}>{CHANCE_TEXT[ch.k]}</div></>}</td>
                     <td className={"num " + (c ? cellCls(deepest(c, "2025", s.cat) || null) : "")}>{c ? fmt(deepest(c, "2025", s.cat)) : ""}</td>
                     {d ? (<>
                       {cell(L![4], d.bond)}<td className="small cell-text">{d.stipend}</td>
