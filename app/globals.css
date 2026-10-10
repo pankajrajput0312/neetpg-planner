@@ -333,7 +333,8 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .sheet .cell-text div { margin-top: 2px; }
 
 /* Shortlist sheet: scroll inside the box so both header rows stay stuck; vertical grid lines */
-.sheetwrap { max-height: calc(100vh - 140px); overflow: auto; }
+.sheetwrap { position: sticky; top: 132px; max-height: calc(100vh - 142px); overflow: auto; }  /* pinned under the 125px app bar */
+@media (max-width: 760px) { .sheetwrap { position: static; max-height: 75vh; } }
 .sheet thead { position: sticky; top: 0; z-index: 3; }
 .sheet thead th { position: static; background: var(--surface-2); }
 .sheet thead tr.seg th { background: var(--surface); }

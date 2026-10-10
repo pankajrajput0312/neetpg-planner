@@ -733,7 +733,7 @@ export default function Page() {
             <section className="strategy">
               <div className="row-btns" style={{ justifyContent: "space-between", alignItems: "center" }}><h2>Shortlist sheet <span className="muted">({SHEET.length} colleges)</span></h2><div className="row-btns"><a className="btn" href="/NEETPG_Anaesthesia_Shortlist_Sheet.xlsx" download>Download Excel</a><button onClick={csv}>Export CSV</button></div></div>
               <div className="mix"><span className="tag v-join">✓ Join {counts.join}</span><span className="tag v-backup">Backup only {counts.backup}</span><span className="tag v-avoid">Avoid {counts.avoid}</span><span className="tag v-na">Not assessed / not in data {counts.na}</span></div>
-              <p className="muted small">Maharashtra first, then the other states in the order given. Each evidence cell starts with a label (green good · blue acceptable · amber caution · red problem · dashed = unverified) followed by the text found. A blank cell means nothing was verified — not that the answer is "no". Click a name for the full detail panel.</p>
+              <p className="muted small">Maharashtra first, then the other states in the order given. Each evidence cell starts with a label (green good · blue acceptable · amber caution · red problem · grey Missing = nothing verified) followed by the text found. A blank cell means nothing was verified — not that the answer is "no". Click a name for the full detail panel.</p>
             </section>
             <div className="ltwrap sheetwrap"><table className="lt sheet">
               <thead>
