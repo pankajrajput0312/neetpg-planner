@@ -498,7 +498,7 @@ export default function Page() {
 
       {tab === "lists" && list && (<>
         <div className="filters">
-          <select value={list.id} onChange={(e) => up({ active: e.target.value })}>{s.lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.items.length})</option>)}</select>
+          <select value={list.id} onChange={(e) => up({ active: e.target.value })}>{s.lists.map((l) => <option key={l.id} value={l.id}>{l.kind === "wishlist" ? "♡ " : "📋 "}{l.name} ({l.items.length})</option>)}</select>
           <button className="primary" onClick={() => {
             if (!confirm("Create / replace the two auto lists (MCC and Maharashtra state) using your priorities and state order?")) return;
             const mk = (id: string, name: string, items: string[]) => ({ id, name, items });
@@ -506,6 +506,7 @@ export default function Page() {
             up({ lists: [...auto, ...s.lists.filter((l) => !l.id.startsWith("auto-"))], active: "auto-mcc" });
           }}>Auto-build my lists</button>
           <button onClick={() => { const n = prompt("New list name"); if (n) { const id = "l" + Date.now(); up({ lists: [...s.lists, { id, name: n, items: [] }], active: id }); } }}>+ New list</button>
+          <button onClick={() => { const n = prompt("New wishlist name (e.g. Dream colleges, Maybe, Delhi only)"); if (n) { const id = "w" + Date.now(); up({ lists: [...s.lists, { id, name: n, items: [], kind: "wishlist" }], active: id }); } }}>+ New wishlist</button>
           <button onClick={() => { const n = prompt("Rename list", list.name); if (n) up({ lists: s.lists.map((l) => (l.id === list.id ? { ...l, name: n } : l)) }); }}>Rename</button>
           <button onClick={() => { const id = "l" + Date.now(); up({ lists: [...s.lists, { id, name: list.name + " (copy)", items: [...list.items] }], active: id }); }}>Duplicate</button>
           <button onClick={() => { if (s.lists.length > 1 && confirm(`Delete “${list.name}”?`)) { const r = s.lists.filter((l) => l.id !== list.id); up({ lists: r, active: r[0].id }); } }}>Delete</button>
@@ -687,6 +688,22 @@ export default function Page() {
           const t = /^nothing adverse found online\.?$/i.test((text ?? "").trim()) ? "" : (text ?? ""); const long = t.length > 110; const open = moreAll || more[key];
           return (<td className="small cell-text">{l && <span className={"pl inline " + l.level} title={l.tip}>{l.label}</span>}{t && <div className={long && !open ? "clamp" : ""}>{t}</div>}
             {long && !moreAll && <button className="more" onClick={() => setMore({ ...more, [key]: !open })}>{open ? "Show less ▴" : "Show more ▾"}</button>}</td>); };
+        // Add-to-list menu: tick any list / wishlist, or create a new one with this college in it
+        const addTo = (id: string) => { const n = s.lists.filter((l) => l.items.includes(id)).length; return (
+          <details className="ms addto"><summary>{n ? `✓ In ${n} list${n > 1 ? "s" : ""}` : "+ Add to list"}</summary>
+            <div className="ms-list">
+              {s.lists.map((l) => { const on = l.items.includes(id); return (
+                <label key={l.id}><input type="checkbox" checked={on} onChange={() => up({ lists: s.lists.map((x) => x.id === l.id ? { ...x, items: on ? x.items.filter((i) => i !== id) : [...x.items, id] } : x) })} />
+                  {l.kind === "wishlist" ? "♡" : "📋"} {l.name} <span className="muted">({l.items.length})</span></label>); })}
+              <form className="newlist" onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const name = (f.elements.namedItem("n") as HTMLInputElement).value.trim(); const kind = (f.elements.namedItem("k") as HTMLSelectElement).value as "list" | "wishlist";
+                if (!name) return; up({ lists: [...s.lists, { id: (kind === "wishlist" ? "w" : "l") + Date.now(), name, items: [id], kind }] }); f.reset(); }}>
+                <b className="small">New list with this college</b>
+                <input name="n" placeholder="Name, e.g. Dream colleges" />
+                <select name="k"><option value="list">📋 Choice list</option><option value="wishlist">♡ Wishlist</option></select>
+                <button type="submit" className="primary">Create &amp; add</button>
+              </form>
+            </div>
+          </details>); };
         const counts = { join: 0, check: 0, backup: 0, avoid: 0, na: 0 };
         SHEET.forEach((row) => { const c = row.id ? BY_ID.get(row.id) : null; counts[(c ? verdictKey(verdictOf(c).verdict) : "na") as keyof typeof counts]++; });
         return (
@@ -705,7 +722,7 @@ export default function Page() {
                 <tr className="stateh"><td colSpan={11}>{st}</td></tr>
                 {SHEET.filter((x) => x.state === st).map((row) => { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null; const L = c ? priorityLabels(c) : null; const v = c ? verdictOf(c) : null; const ch = c ? chance(c, s.air, s.cat) : null; return (
                   <tr key={row.given}>
-                    <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{row.given}</b> : <b className="muted">{row.given}</b>}<small>{c ? `${shortName(c)} · ${typeLabel(c)}` : "not in app data"}</small></td>
+                    <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{row.given}</b> : <b className="muted">{row.given}</b>}<small>{c ? `${shortName(c)} · ${typeLabel(c)}` : "not in app data"}</small>{c && addTo(c.id)}</td>
                     <td>{v && <><span className={"vtag v-" + verdictKey(v.verdict)} title={v.headline}>{v.verdict}</span><br /><small className={"r-" + REC_KEY[recommendation(c!).rec]} style={{ padding: "1px 6px", borderRadius: 6 }}>{placeText(c!)}</small><div className="small muted" style={{ marginTop: 4, maxWidth: 220 }}>{v.headline}</div></>}</td>
                     <td>{ch && <><span className={"pill " + ch.k} title={ch.t}>{ch.short}</span><div className="small muted" style={{ marginTop: 4 }}>{CHANCE_TEXT[ch.k]}</div></>}</td>
                     <td className={"num " + (c ? cellCls(deepest(c, "2025", s.cat) || null) : "")}>{c ? fmt(deepest(c, "2025", s.cat)) : ""}</td>

@@ -351,3 +351,7 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 .sheet .clamp { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }  /* full text: hover, or the detail panel */
 .sheet .more { display: block; margin-top: 4px; padding: 2px 0; border: 0; background: none; color: var(--accent); font-size: .78rem; font-weight: 600; cursor: pointer; }
 .sheet .more:hover { text-decoration: underline; }
+/* Shortlist "+ Add to list" menu */
+.addto { margin-top: 8px; } .addto summary { padding: 4px 10px; font-size: .8rem; font-weight: 600; color: var(--accent); }
+.addto .ms-list { min-width: 260px; z-index: 8; } .addto .ms-list label { white-space: normal; }
+.addto .newlist { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); margin-top: 6px; padding: 8px 4px 2px; }

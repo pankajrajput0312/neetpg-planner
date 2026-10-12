@@ -31,7 +31,7 @@ export type Crit = "ss" | "hands" | "tox" | "dnb" | "bond";
 export type Weights = Record<Crit, number>;
 export type PrioritySet = { id: string; name: string; weights: Weights };
 export type Rating = Partial<Record<Crit, number>>;
-export type List = { id: string; name: string; items: string[] };
+export type List = { id: string; name: string; items: string[]; kind?: "list" | "wishlist" };  // kind missing = "list"
 export type Store = {
   air: number; cat: "Open" | "OBC";
   sets: PrioritySet[]; activeSet: string;
