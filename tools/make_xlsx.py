@@ -106,7 +106,11 @@ for st in STATES:
         if v: paint(5, VK[v['verdict']])
         paint(6, {'Put high': 'good', 'Backup only': 'mid', 'Leave out': 'bad'}.get(d.get('rec'), 'none')); paint(8, ch[1]); paint(11, bd[1]); paint(14, ss[1]); paint(16, ho[1]); paint(18, hr[1])
         if deep(c, '2025') >= AIR: paint(9, 'good')
-widths = [14, 26, 28, 20, 16, 12, 40, 12, 12, 12, 12, 34, 16, 22, 40, 18, 40, 18, 40, 30, 30]
+# Not shown in the Excel (kept in the app): verdict, where to place it, chance
+DROP = ['Verdict (is it good?)', 'Where to place it in her list', 'Chance at AIR 42k']
+widths = [w for h_, w in zip(head, [14, 26, 28, 20, 16, 12, 40, 12, 12, 12, 12, 34, 16, 22, 40, 18, 40, 18, 40, 30, 30]) if h_ not in DROP]
+for col in sorted((head.index(h_) + 1 for h_ in DROP), reverse=True): ws.delete_cols(col)
+head = [h_ for h_ in head if h_ not in DROP]
 for i, w in enumerate(widths, 1): ws.column_dimensions[get_column_letter(i)].width = w
 for rowc in ws.iter_rows(min_row=2):
     for cell in rowc: cell.alignment = Alignment(wrap_text=True, vertical='top'); cell.border = Border(top=thin, bottom=thin, left=thin, right=thin)
@@ -114,17 +118,6 @@ ws.freeze_panes = 'C2'; ws.auto_filter.ref = f"A1:{get_column_letter(len(head))}
 # legend sheet: every label in the sheet, what it means and how it was decided
 lg = wb.create_sheet('How to read')
 G = [('Shortlist sheet — NEET-PG 2026 Anaesthesia, AIR ~42,000, OBC-NCL', '', ''), ('', '', ''), ('Column', 'Label you will see', 'What it means'),
- ('Verdict (is it good?)', 'Join', 'Good training: official DM/MCh courses in 2+ core areas, no red flags found, fair stipend. Take it if allotted.'),
- ('', 'Backup only', 'A real PG seat but weaker or less certain training. Fill it below the Join colleges.'),
- ('', 'Avoid', 'Has a deal-breaker (unpaid / below-minimum stipend, documented harassment, etc.). Do not fill unless she would truly join.'),
- ('Where to place it in her list', 'Put high in her list', 'Good college AND within her rank range — fill near the top.'),
- ('', 'Keep lower, as a backup', 'Worth filling, but below the "Put high" ones.'),
- ('', 'Leave out — out of her rank range', 'Closed well before AIR 42k in 2024 and 2025; filling it only wastes a choice (unless kept as a dream pick at the very top).'),
- ('', 'Leave out — has a deal-breaker', 'Reachable, but the verdict is Avoid.'),
- ('Chance at AIR 42k', 'Likely — reached her rank in both 2024 & 2025', 'Someone at or below AIR 42k (Open or OBC) was allotted this seat in both years.'),
- ('', 'Possible — reached her rank in 2025 only', 'Only 2025 went as far as 42k.'),
- ('', 'Borderline — missed her rank by less than 10% in 2025', 'Last 2025 allotment was within 10% of 42k (e.g. 38k–42k).'),
- ('', 'Unlikely — closed well before her rank', 'Last allotment in both years was far above her (e.g. 30k).'),
  ('2025 / 2024 closing AIR', 'number', 'Highest AIR allotted in any round (R1, R2, R3, stray) for Open or OBC — from official MCC result PDFs. Green = reached 42k.'),
  ('Bond', 'No bond', 'No service bond. Private DNB hospitals are barred by NBEMS from taking one.'),
  ('', '1-year bond / N-year bond', 'Must serve that many years after PG (or pay the penalty in Bond — detail).'),
