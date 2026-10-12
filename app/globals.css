@@ -354,3 +354,7 @@ a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: un
 /* Shortlist wishlist heart */
 .sheet .heart { display: block; margin-top: 6px; padding: 0 2px; border: 0; background: none; font-size: 1.35rem; line-height: 1; color: var(--muted); cursor: pointer; }
 .sheet .heart:hover { color: var(--bad); } .sheet .heart.on { color: var(--bad); }
+.sheet .rowacts { display: flex; align-items: center; gap: 8px; margin-top: 8px; } .sheet .rowacts .heart { margin-top: 0; }
+.addto summary { padding: 4px 10px; font-size: .8rem; font-weight: 600; color: var(--accent); }
+.addto .ms-list { min-width: 240px; z-index: 8; } .addto .ms-list label { white-space: normal; }
+.addto .newlist { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--border); margin-top: 6px; padding: 8px 4px 2px; }

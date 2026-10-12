@@ -687,6 +687,20 @@ export default function Page() {
           const t = /^nothing adverse found online\.?$/i.test((text ?? "").trim()) ? "" : (text ?? ""); const long = t.length > 110; const open = moreAll || more[key];
           return (<td className="small cell-text">{l && <span className={"pl inline " + l.level} title={l.tip}>{l.label}</span>}{t && <div className={long && !open ? "clamp" : ""}>{t}</div>}
             {long && !moreAll && <button className="more" onClick={() => setMore({ ...more, [key]: !open })}>{open ? "Show less ▴" : "Show more ▾"}</button>}</td>); };
+        // Add-to-list menu: tick any of her lists, or create a new one with this college in it
+        const addTo = (id: string) => { const n = s.lists.filter((l) => l.items.includes(id)).length; return (
+          <details className="ms addto"><summary>{n ? `✓ In ${n} list${n > 1 ? "s" : ""}` : "+ Add to list"}</summary>
+            <div className="ms-list">
+              {s.lists.map((l) => { const on = l.items.includes(id); return (
+                <label key={l.id}><input type="checkbox" checked={on} onChange={() => up({ lists: s.lists.map((x) => x.id === l.id ? { ...x, items: on ? x.items.filter((i) => i !== id) : [...x.items, id] } : x) })} />
+                  {l.name} <span className="muted">({l.items.length})</span></label>); })}
+              <form className="newlist" onSubmit={(e) => { e.preventDefault(); const f = e.currentTarget; const name = (f.elements.namedItem("n") as HTMLInputElement).value.trim();
+                if (!name) return; up({ lists: [...s.lists, { id: "l" + Date.now(), name, items: [id] }] }); f.reset(); }}>
+                <input name="n" placeholder="New list name" />
+                <button type="submit" className="primary">Create &amp; add</button>
+              </form>
+            </div>
+          </details>); };
         const counts = { join: 0, check: 0, backup: 0, avoid: 0, na: 0 };
         SHEET.forEach((row) => { const c = row.id ? BY_ID.get(row.id) : null; counts[(c ? verdictKey(verdictOf(c).verdict) : "na") as keyof typeof counts]++; });
         return (
@@ -705,7 +719,7 @@ export default function Page() {
                 <tr className="stateh"><td colSpan={11}>{st}</td></tr>
                 {SHEET.filter((x) => x.state === st).map((row) => { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null; const L = c ? priorityLabels(c) : null; const v = c ? verdictOf(c) : null; const ch = c ? chance(c, s.air, s.cat) : null; return (
                   <tr key={row.given}>
-                    <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{row.given}</b> : <b className="muted">{row.given}</b>}<small>{c ? `${shortName(c)} · ${typeLabel(c)}` : "not in app data"}</small>{c && <button className={"heart" + (saved.includes(c.id) ? " on" : "")} title={saved.includes(c.id) ? "In wishlist — tap to remove" : "Add to wishlist"} onClick={() => toggleSave(c.id)}>{saved.includes(c.id) ? "♥" : "♡"}</button>}</td>
+                    <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{row.given}</b> : <b className="muted">{row.given}</b>}<small>{c ? `${shortName(c)} · ${typeLabel(c)}` : "not in app data"}</small>{c && <div className="rowacts">{addTo(c.id)}<button className={"heart" + (saved.includes(c.id) ? " on" : "")} title={saved.includes(c.id) ? "In wishlist — tap to remove" : "Add to wishlist"} onClick={() => toggleSave(c.id)}>{saved.includes(c.id) ? "♥" : "♡"}</button></div>}</td>
                     <td>{v && <><span className={"vtag v-" + verdictKey(v.verdict)} title={v.headline}>{v.verdict}</span><br /><small className={"r-" + REC_KEY[recommendation(c!).rec]} style={{ padding: "1px 6px", borderRadius: 6 }}>{placeText(c!)}</small><div className="small muted" style={{ marginTop: 4, maxWidth: 220 }}>{v.headline}</div></>}</td>
                     <td>{ch && <><span className={"pill " + ch.k} title={ch.t}>{ch.short}</span><div className="small muted" style={{ marginTop: 4 }}>{CHANCE_TEXT[ch.k]}</div></>}</td>
                     <td className={"num " + (c ? cellCls(deepest(c, "2025", s.cat) || null) : "")}>{c ? fmt(deepest(c, "2025", s.cat)) : ""}</td>
