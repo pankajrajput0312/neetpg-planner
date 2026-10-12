@@ -25,7 +25,7 @@ def bond_years(c):
     d = O.get(c['id'], {}).get('bond_doc'); t = (d or {}).get('service_years') or strip(c['bond'])
     if c['kind'] in ('pdnb', 'mhpriv'): return 0
     m = re.search(r'(\d)\s*years?', t or '', re.I)
-    return int(m.group(1)) if m else (0 if d and not d.get('service_years') and not d.get('service_bond') else None)
+    return int(m.group(1)) if m else (0 if d and not d.get('service_years') and not d.get('service_bond') and not d.get('leaving_penalty') else None)
 CONF = {'High': 3, 'Medium': 2, 'Low': 1, 'Unverified': 0}
 DEAL = re.compile(r'suicide|harass|assault|unpaid|not paid|withh|ragging|threat culture|strike', re.I)
 def labels(c):
@@ -40,7 +40,7 @@ def labels(c):
     tx = TX.get(c['id'], {}).get('toxicity'); cnt = (tx or {}).get('count', {}); serious = cnt.get('suicides', 0) + cnt.get('unknown_deaths', 0); minor = cnt.get('strikes', 0) + cnt.get('harassment', 0) + cnt.get('resignations', 0)
     hr = ((f'Red flag — {serious} deaths reported' if serious > 1 else 'Red flag — a death reported'), 'bad') if tx and tx['cell'] and serious else ('Caution — complaints reported', 'mid') if tx and tx['cell'] and minor else ('OK — nothing bad found online', 'ok') if tx and re.search(r'(?i)nothing (adverse|bad) found|^no resident (incident|item)|nothing about (this|residents|pgs)', tx['cell']) and not flags else ('Caution — complaints reported', 'mid') if tx and re.search(r'(?i)toxic|harass|unpaid|not paid|strike', tx['cell']) else ('Red flag — serious resident complaints', 'bad') if flags and hc and CONF[hc['confidence']] >= 2 else ('Caution — resident complaints', 'mid') if flags else (('Good — residents report sane hours', 'good') if CONF[hc['confidence']] >= 2 else ('Unclear — only weak reports', 'mid')) if hc and hc['confidence'] != 'Unverified' else ('Unclear — some reports, read the text', 'ok') if r and r['toxicity']['confidence'] != 'Unverified' else ('Missing — nothing found online', 'none')
     by = bond_years(c)
-    bd = ('No bond', 'good') if by == 0 else ('1-year bond', 'ok') if by == 1 else (f'{by}-year bond', 'bad') if by is not None else ('Missing — bond not confirmed', 'none')
+    bd = ('No bond', 'good') if by == 0 else ('1-year bond', 'ok') if by == 1 else (f'{by}-year bond', 'bad') if by is not None else ('Bond / penalty applies', 'mid') if (O.get(c['id'], {}).get('bond_doc') or {}).get('service_bond') or (O.get(c['id'], {}).get('bond_doc') or {}).get('leaving_penalty') else ('Missing — bond not confirmed', 'none')
     return ss, ho, hr, bd
 HOURS = re.compile(r'\b\d{1,2}(?:\s*[-–to]+\s*\d{1,2})?\s*(?:h\b|hr|hrs|hour)[^.;]{0,60}', re.I)
 TOX = re.compile(r'suicide|death|died|resign|strike|harass|unpaid|not paid|withh|protest|ragging|threat culture|assault', re.I)
@@ -121,7 +121,7 @@ G = [('Shortlist sheet — NEET-PG 2026 Anaesthesia, AIR ~42,000, OBC-NCL', '', 
  ('2025 / 2024 closing AIR', 'number', 'Highest AIR allotted in any round (R1, R2, R3, stray) for Open or OBC — from official MCC result PDFs. Green = reached 42k.'),
  ('Bond', 'No bond', 'No service bond. Private DNB hospitals are barred by NBEMS from taking one.'),
  ('', '1-year bond / N-year bond', 'Must serve that many years after PG (or pay the penalty in Bond — detail).'),
- ('', 'Missing — bond not confirmed', 'No official bond document found; ask the college.'),
+ ('', 'Bond / penalty applies', 'A service bond or a penalty for leaving exists, but the number of years is not stated (amount in the detail).'),
  ('Multispeciality exposure', 'High — N super-speciality depts, officially confirmed', 'Official MCC list shows super-speciality (DM/MCh) training running in 3+ of: heart, brain, kidney/transplant, GI surgery, cancer, children. Strongest proof those OTs are busy.'),
  ('', 'Medium — 1–2 areas, officially confirmed', 'Official super-speciality training runs here, but in only 1–2 areas (listed under the label).'),
  ('', 'Medium — only the hospital website claims them', 'The hospital website lists super-speciality departments (named in the detail); no official training course confirms them.'),

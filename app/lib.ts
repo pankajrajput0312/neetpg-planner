@@ -357,7 +357,7 @@ export function autoScore(c: College, w: Weights) {
 // Suggested choice order for one counselling portal.
 export const feeNum = (c: College) => { const t = fee(c); const m = t?.match(/(?:₹|Rs\.?)\s?([\d,.]+)\s*(lakh|L\b|Cr|crore)?/i); if (!m) return null; let n = parseFloat(m[1].replace(/,/g, "")); const u = (m[2] || "").toLowerCase(); if (u.startsWith("l")) n *= 1e5; if (u.startsWith("c")) n *= 1e7; return n; };
 export const stipendNum = (c: College) => { const t = stipend(c); const m = t?.match(/(?:₹|Rs\.?)\s?([\d,]+)/); return m ? parseInt(m[1].replace(/,/g, "")) : null; };
-export const bondYears = (c: College) => { const d = OFFICIAL[c.id]?.bond_doc; const t = d?.service_years ?? strip(c.bond); const m = t?.match(/(\d)\s*(?:-\s*\d\s*)?years?/i); if (c.kind === "pdnb" || c.kind === "mhpriv") return 0; return m ? parseInt(m[1]) : (d && !d.service_years && !d.service_bond ? 0 : null); };
+export const bondYears = (c: College) => { const d = OFFICIAL[c.id]?.bond_doc; const t = d?.service_years ?? strip(c.bond); const m = t?.match(/(\d)\s*(?:-\s*\d\s*)?years?/i); if (c.kind === "pdnb" || c.kind === "mhpriv") return 0; return m ? parseInt(m[1]) : (d && !d.service_years && !d.service_bond && !d.leaving_penalty ? 0 : null); };
 // Why a college is excluded by her preferences (null = allowed).
 export function excludedBy(c: College, p: Prefs): string | null {
   if (c.counselling === "MH-CET" && p.mhEligible === "no") return "Maharashtra state quota — not eligible";
@@ -465,7 +465,7 @@ export function priorityLabels(c: College): PLabel[] {
     : { n: 3, key: "Hours", label: "Missing — nothing found online", level: "none", tip: "No reports either way" };
   const dnb: PLabel = isDnb(c) ? { n: 4, key: "DNB pass", label: "Missing — NBEMS does not publish it", level: "none", tip: "NBEMS publishes no institute-wise pass rate; ask for the last 3 batches" } : { n: 4, key: "DNB pass", label: "Not needed — MD seat", level: "ok", tip: "MD — pass rate not part of your criteria" };
   const by = bondYears(c);
-  const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "No bond", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1-year bond", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by}-year bond`, level: "bad", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Missing — bond not confirmed", level: "none", tip: strip(c.bond).slice(0, 120) };
+  const bd: PLabel = by === 0 ? { n: 5, key: "Bond", label: "No bond", level: "good", tip: bondShort(c) } : by === 1 ? { n: 5, key: "Bond", label: "1-year bond", level: "ok", tip: bondShort(c) } : by !== null ? { n: 5, key: "Bond", label: `${by}-year bond`, level: "bad", tip: bondShort(c) } : OFFICIAL[c.id]?.bond_doc && (OFFICIAL[c.id]!.bond_doc!.service_bond || OFFICIAL[c.id]!.bond_doc!.leaving_penalty) ? { n: 5, key: "Bond", label: "Bond / penalty applies", level: "mid", tip: bondShort(c) } : { n: 5, key: "Bond", label: "Missing — bond not confirmed", level: "none", tip: strip(c.bond).slice(0, 120) };
   return [ss, ho, hr, dnb, bd];
 }
 

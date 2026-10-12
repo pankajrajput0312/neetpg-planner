@@ -10,7 +10,9 @@ import {
 
 const KEY = "neetpg-planner-v1";
 const Html = ({ h }: { h: string }) => <span dangerouslySetInnerHTML={{ __html: h }} />;
-const ConfTag = ({ c }: { c: Conf }) => <span className={"conf " + c}>{c}</span>;
+// Plain-words source strength; nothing shown when no source was found
+const CONF_TEXT: Record<Conf, string> = { High: "Strong source", Medium: "Good source", Low: "Weak source", Unverified: "" };
+const ConfTag = ({ c }: { c: Conf }) => (CONF_TEXT[c] ? <span className={"conf " + c}>{CONF_TEXT[c]}</span> : null);
 const COV = coverage();
 
 export default function Page() {
@@ -461,7 +463,7 @@ export default function Page() {
               <tr><th>Leaving penalty</th>{cmp.map((c) => <td key={c.id} className="small">{strip(c.penalty).split(";")[0]}</td>)}</tr>
               {CRITS.filter(([k]) => k !== "bond").map(([k, label, f]) => (
                 <tr key={k}><th>{label}</th>{cmp.map((c) => { const p = RESEARCH[c.id]?.[f] as Param | undefined;
-                  return <td key={c.id} className="small">{k === "dnb" && !isDnb(c) ? "n/a (MD)" : p ? <><ConfTag c={p.confidence} /> {p.summary}</> : "Not researched"}</td>; })}</tr>))}
+                  return <td key={c.id} className="small">{k === "dnb" && !isDnb(c) ? "Not needed — MD seat" : p ? <><ConfTag c={p.confidence} /> {p.summary}</> : ""}</td>; })}</tr>))}
               <tr><th>Pros</th>{cmp.map((c) => <td key={c.id} className="small"><ul className="pros">{RESEARCH[c.id]?.pros.slice(0, 4).map((p, i) => <li key={i}>{p.text}</li>)}</ul></td>)}</tr>
               <tr><th>Cons</th>{cmp.map((c) => <td key={c.id} className="small"><ul className="cons">{RESEARCH[c.id]?.cons.slice(0, 4).map((p, i) => <li key={i}>{p.text}</li>)}</ul></td>)}</tr>
               <tr><th>Missing evidence</th>{cmp.map((c) => <td key={c.id}>{gaps(c) ?? "–"} of {params(c).length} priorities</td>)}</tr>
