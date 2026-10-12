@@ -50,8 +50,8 @@ for row in S:
     # short cells: hospital fact first, otherwise the national rule (marked "Rule:")
     for f in ('hands', 'icu', 'hours'):
         if not sh.get(f) and g.get(f): sh[f] = g[f]; bump('short_' + f)
-    if not sh.get('icu'): sh['icu'] = 'Rule: ' + ('4 months ICU over 3 years (NBEMS DNB curriculum)' if dnb else '4 months ICU over 3 years (NMC MD curriculum)'); bump('icu_rule')
-    if not sh.get('hours'): sh['hours'] = 'Rule: max 12 h continuous duty, 48 h/week, 1 weekly off (often exceeded)'; bump('hours_rule')
+    if not sh.get('icu'): sh['icu'] = 'General: ' + ('4 months ICU over 3 years (NBEMS DNB curriculum)' if dnb else '4 months ICU over 3 years (NMC MD curriculum)'); bump('icu_rule')
+    if not sh.get('hours'): sh['hours'] = 'General: no NBEMS hour cap; weekly off + 30 days leave/yr. 72+ h weeks common (2025 survey)' if dnb else "General: NMC 'reasonable hours', weekly off, 20+5 days leave/yr. 72+ h weeks common"; bump('hours_rule')
     r['missing'] = []
 json.dump(R, open(APP + 'research.json', 'w'), ensure_ascii=False); json.dump(SH, open(APP + 'sheet_short.json', 'w'), ensure_ascii=False)
 json.dump(RULE, open(APP + 'rules.json', 'w'), ensure_ascii=False)
