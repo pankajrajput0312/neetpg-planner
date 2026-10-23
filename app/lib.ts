@@ -48,7 +48,7 @@ export type Store = {
 export type Prefs = { mhEligible: "yes" | "no" | "unknown"; budgetPerYear: number | null; dnbOk: boolean; maxBondYears: number; states: string[]; minStipend: number | null };
 export const DEFAULT_PREFS: Prefs = { mhEligible: "unknown", budgetPerYear: null, dnbOk: true, maxBondYears: 2, states: [], minStipend: null };
 
-export const COLLEGES = data.colleges as College[];
+export const COLLEGES = data.colleges as unknown as College[];
 export const BY_ID = new Map(COLLEGES.map((c) => [c.id, c]));
 export const RESEARCH = researchData as unknown as Record<string, Research>;
 export const GUIDE = guideData as Guide;
@@ -189,9 +189,19 @@ export function firstRound(c: College, year: string, cat: string, air: number) {
   const i = roundClose(c, year, cat).findIndex((v) => (v ?? 0) >= air);
   return i < 0 ? null : ROUNDS[i];
 }
+// 2026 Round 1 closing (MCC, live counselling) — only round published so far.
+export const r1_26 = (c: College, cat: string) => roundClose(c, "2026", cat)[0];
+// Predicted 2026 R2 closing = 2026 R1 × how much this seat slid from R1 to R2 last year (2025, else 2024, else the median slide).
+const slide = (c: College, y: string, cat: string) => { const r = roundClose(c, y, cat); return r[0] && r[1] ? Math.max(1, r[1] / r[0]) : null; };
+const MED_SLIDE = (() => { const v = COLLEGES.map((c) => slide(c, "2025", "OBC")).filter((x): x is number => !!x).sort((a, b) => a - b); return v[v.length >> 1] ?? 1.15; })();
+export function predR2(c: College, cat: string) {
+  const r1 = r1_26(c, cat); if (!r1) return null;
+  return Math.round(r1 * (slide(c, "2025", cat) ?? slide(c, "2024", cat) ?? MED_SLIDE));
+}
 export type Chance = { k: "good" | "ok" | "mid" | "bad"; t: string; short: string };
 export function chance(c: College, air: number, cat: string): Chance {
   const d24 = deepest(c, "2024", cat), d25 = deepest(c, "2025", cat);
+  if (air <= (r1_26(c, cat) ?? 0)) return { k: "good", short: "Likely", t: "Likely — already reached in 2026 Round 1" };
   if (air <= d24 && air <= d25) return { k: "good", short: "Likely", t: `Likely — reached in 2024 & 2025 (from ${firstRound(c, "2025", cat, air)})` };
   if (air <= d25) return { k: "ok", short: "Possible", t: `Possible — reached in 2025 ${firstRound(c, "2025", cat, air)} only` };
   if (air <= d25 * 1.1) return { k: "mid", short: "Borderline", t: "Borderline — within 10% of 2025 closing" };
@@ -471,6 +481,11 @@ export function priorityLabels(c: College): PLabel[] {
 
 // ---------- Sheet tab: her friend's list with 7 columns, blank when nothing is verified ----------
 import sheetData from "./sheet.json";
+import lockData from "./lock_r1.json";
+// Her MCC Round 1 locked choices (LockChoiceLtr_Round_1.pdf) + each seat's 2026 R1 Open/OBC closing (non-PwD) from the R1 result PDF.
+// id = app college when matched (170/296); r1 = null when no Open/OBC allotment there in R1. "outside" = R1 seats not in her list closing ≥34k.
+export type LockChoice = { n: number; name: string; ct: string; id: string | null; r1: number | null };
+export const LOCK = lockData as { air: number; cat: string; locked: string; choices: LockChoice[]; outside: { name: string; ct: string; quota: string; r1: number; id: string | null }[] };
 import sheetShortData from "./sheet_short.json";
 export const SHEET = sheetData as { state: string; given: string; id: string | null; matched: string | null }[];
 export const SHEET_STATES = ["Maharashtra", "Delhi", "Gujarat", "Rajasthan", "Uttar Pradesh", "Madhya Pradesh", "Himachal Pradesh", "Uttarakhand", "Punjab", "Chhattisgarh", "Jharkhand", "Karnataka", "Tamil Nadu", "Meghalaya", "Assam", "Odisha", "Manipur", "Andhra Pradesh"];

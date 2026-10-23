@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   BY_ID, COLLEGES, CRITS, DEFAULT, GUIDE, PREP, PRESETS, RESEARCH, ROUNDS, ROW_HELP, ROW_LABEL, STATE_ORDER,
-  beds, bondShort, chance, evidence, money, coverage, deepest, fee, firstRound, fmt, gaps, isDnb, params, place, roundClose, score,
+  beds, bondShort, chance, r1_26, predR2, LOCK, evidence, money, coverage, deepest, fee, firstRound, fmt, gaps, isDnb, params, place, roundClose, score,
   shortName, stipend, strategy, strip, OFFICIAL, VERDICT_ORDER, verdictKey, verdictOf, autoList, autoScore, joinedLast, ADMITTED, SUPERSPEC, DERIVED, SITES, FUTURE, REC_KEY, SENIOR_METHOD, allPros, allCons, recommendation, seniorChecklist, RESIDENT, typeLabel, TYPE_LABEL, excludedBy, feeNum, stipendNum, bondYears, DEFAULT_PREFS, aiRank, priorityLabels, SHEET, SHEET_STATES, sheetRow, toxFor, SHEET_SHORT, placeText, CHANCE_TEXT,
   type College, type Conf, type Crit, type Param, type Store, type Resident, type Prefs,
 } from "./lib";
@@ -18,7 +18,7 @@ const COV = coverage();
 export default function Page() {
   const [s, setS] = useState<Store>(DEFAULT);
   const [loaded, setLoaded] = useState(false);
-  const [tab, setTab] = useState<"explore" | "compare" | "saved" | "lists" | "ai" | "sheet" | "decide">("sheet");
+  const [tab, setTab] = useState<"r1" | "explore" | "compare" | "saved" | "lists" | "ai" | "sheet" | "decide">("sheet");
   const [moreAll, setMoreAll] = useState(false); const [more, setMore] = useState<Record<string, boolean>>({});  // Shortlist: expanded cells
   const [onlySaved, setOnlySaved] = useState(false);
   const [q, setQ] = useState("");
@@ -160,10 +160,10 @@ export default function Page() {
   };
   const exportCsv = () => {
     const esc = (v: unknown) => `"${strip(String(v ?? "")).replace(/"/g, '""')}"`;
-    const head = ["#", "College", "State", "Counselling", "Type", "Chance", "2025 R1", "2025 R2", "2025 R3", "2025 Stray", "2024 deepest", `My score (${set.name})`, "Beds", "Fee", "Stipend", "Bond", "Penalty", "Note"];
+    const head = ["#", "College", "State", "Counselling", "Type", "Chance", "2026 R1", "Pred. 2026 R2", "2025 R1", "2025 R2", "2025 R3", "2025 Stray", "2024 deepest", `My score (${set.name})`, "Beds", "Fee", "Stipend", "Bond", "Penalty", "Note"];
     const lines = list.items.map((id, i) => {
       const c = BY_ID.get(id)!;
-      return [i + 1, c.name, c.state, c.counselling, c.kindLabel, chance(c, s.air, s.cat).t, ...roundClose(c, "2025", s.cat), deepest(c, "2024", s.cat),
+      return [i + 1, c.name, c.state, c.counselling, c.kindLabel, chance(c, s.air, s.cat).t, r1_26(c, s.cat), predR2(c, s.cat), ...roundClose(c, "2025", s.cat), deepest(c, "2024", s.cat),
         myScore(c) ?? "", RESEARCH[id]?.beds, fee(c), stipend(c), c.bond, c.penalty, s.notes[id] ?? ""].map(esc).join(",");
     });
     download(`${list.name}.csv`, [head.map(esc).join(","), ...lines].join("\n"), "text/csv");
@@ -193,6 +193,7 @@ export default function Page() {
         <div className="cut-row">
           {r25.map((v, i) => <div key={i} className={"cell " + cellCls(v)}><small>{ROUNDS[i]}</small><b>{fmt(v)}</b></div>)}
         </div>
+        {c.ranks["2026"] && (() => { const v = r1_26(c, s.cat), p = r25[0]; return <p className="joined">2026 R1: <b className={cellCls(v)}>{fmt(v)}</b>{v && p ? <> · 2025 R1 {fmt(p)} ({v >= p ? "+" : "−"}{fmt(Math.abs(v - p))})</> : null}{roundClose(c, "2024", s.cat)[0] ? <> · 2024 R1 {fmt(roundClose(c, "2024", s.cat)[0])}</> : null}{predR2(c, s.cat) ? <> · predicted R2 <b className={cellCls(predR2(c, s.cat))}>{fmt(predR2(c, s.cat))}</b></> : null}</p>; })()}
         {j && (j.aiq || j.state) && <p className="joined">Last who joined (2025): {j.aiq ? <>AIQ <b>{fmt(j.aiq)}</b></> : null}{j.aiq && j.state ? " · " : ""}{j.state ? <>State quota <b>{fmt(j.state)}</b></> : null}</p>}
       </div>
     );
@@ -270,7 +271,7 @@ export default function Page() {
 
           <h4>Cutoffs — closing AIR per round</h4>
           <table className="rk"><thead><tr><th></th>{ROUNDS.map((x) => <th key={x}>{x}</th>)}</tr></thead><tbody>
-            {["2025", "2024"].flatMap((y) => Object.entries(c.ranks[y] ?? {}).filter(([, v]) => v.some(Boolean)).map(([cat, v]) => (
+            {["2026", "2025", "2024"].flatMap((y) => Object.entries(c.ranks[y] ?? {}).filter(([, v]) => v.some(Boolean)).map(([cat, v]) => (
               <tr key={y + cat}><th title={ROW_HELP[cat]}>{y} · {ROW_LABEL[cat] ?? cat}</th>{v.map((x, i) => {
                 const src = c.sources[y]?.[i];
                 return <td key={i} className={cellCls(x)}>{x && src ? <a href={src} target="_blank" rel="noopener">{fmt(x)}</a> : fmt(x)}</td>;
@@ -404,7 +405,7 @@ export default function Page() {
         </div>
         {readOnly && <div className="hint">👁 You are viewing someone's shared lists (read-only). Changes you make here are not saved.</div>}
         <nav>
-          {([["sheet", `★ Her shortlist (${SHEET.length})`], ["explore", "Explore all"], ["compare", `Compare (${cmp.length})`], ["saved", `♡ Wishlist (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["ai", "AI ranking"], ["decide", "Before you decide"]] as const).map(([k, l]) => (
+          {([["r1", "Round 1 review"], ["sheet", `★ Her shortlist (${SHEET.length})`], ["explore", "Explore all"], ["compare", `Compare (${cmp.length})`], ["saved", `♡ Wishlist (${saved.length})`], ["lists", `My list (${list?.items.length ?? 0})`], ["ai", "AI ranking"], ["decide", "Before you decide"]] as const).map(([k, l]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>))}
         </nav>
       </header>
@@ -454,6 +455,9 @@ export default function Page() {
               <tr><th>5 priorities</th>{cmp.map((c) => <td key={c.id}><div className="plabels">{priorityLabels(c).map((l) => <span key={l.n} className={"pl " + l.level} title={l.tip}><small>{l.n} {l.key}</small>{l.label}</span>)}</div></td>)}</tr>
               <tr><th>Seat type</th>{cmp.map((c) => <td key={c.id}>{c.kindLabel}</td>)}</tr>
               <tr><th>Chance</th>{cmp.map((c) => { const ch = chance(c, s.air, s.cat); return <td key={c.id}><span className={"pill " + ch.k}>{ch.short}</span><br /><small>{ch.t}</small></td>; })}</tr>
+              <tr><th>2026 R1</th>{cmp.map((c) => { const v = r1_26(c, s.cat), p = roundClose(c, "2025", s.cat)[0]; return <td key={c.id} className={cellCls(v)}>{fmt(v)}{v && p ? <><br /><small>{v >= p ? "+" : "−"}{fmt(Math.abs(v - p))} vs 2025 R1</small></> : null}</td>; })}</tr>
+              <tr><th>2024 R1</th>{cmp.map((c) => { const v = roundClose(c, "2024", s.cat)[0]; return <td key={c.id} className={cellCls(v)}>{fmt(v)}</td>; })}</tr>
+              <tr><th>Pred. 2026 R2</th>{cmp.map((c) => { const v = predR2(c, s.cat); return <td key={c.id} className={cellCls(v)}>{fmt(v)}</td>; })}</tr>
               {ROUNDS.map((r, i) => <tr key={r}><th>2025 {r}</th>{cmp.map((c) => { const v = roundClose(c, "2025", s.cat)[i]; return <td key={c.id} className={cellCls(v)}>{fmt(v)}</td>; })}</tr>)}
               <tr><th>2024 deepest</th>{cmp.map((c) => { const v = deepest(c, "2024", s.cat); return <td key={c.id} className={cellCls(v)}>{fmt(v)}</td>; })}</tr>
               <tr><th>Fee / year</th>{cmp.map((c) => <td key={c.id} title={fee(c) ?? ""}>{money(fee(c)) ?? "?"}</td>)}</tr>
@@ -584,7 +588,7 @@ export default function Page() {
         </div>
         {listView === "rows" && list.items.length > 0 && (
           <div className="ltwrap"><table className="lt">
-            <thead><tr><th></th><th>#</th><th>College</th><th>Type</th><th>Verdict</th><th>Chance</th><th>5 priorities</th><th className="num">2025 R1</th><th className="num">R2</th><th className="num">R3</th><th className="num">Stray</th><th>Fee / yr</th><th>Stipend</th><th>Bond</th><th className="num">Score</th><th></th></tr></thead>
+            <thead><tr><th></th><th>#</th><th>College</th><th>Type</th><th>Verdict</th><th>Chance</th><th>5 priorities</th><th className="num">2026 R1</th><th className="num">Pred. R2</th><th className="num">2025 R1</th><th className="num">R2</th><th className="num">R3</th><th className="num">Stray</th><th>Fee / yr</th><th>Stipend</th><th>Bond</th><th className="num">Score</th><th></th></tr></thead>
             <tbody>
               {list.items.map((id, i) => {
                 const c = BY_ID.get(id); if (!c) return null;
@@ -592,7 +596,7 @@ export default function Page() {
                 if ((lf.state.length && !lf.state.includes(c.state)) || (lf.kind.length && !lf.kind.includes(c.kind)) || (lf.verdict.length && !lf.verdict.includes(v.verdict)) || (lf.chance.length && !lf.chance.includes(ch.k)) || (lf.min && deepest(c, "2025", s.cat) < +lf.min) || (lf.max && deepest(c, "2025", s.cat) > +lf.max)) return null;
                 const ex = excludedBy(c, prefs);
                 return (<Fragment key={id}>
-                  {prev !== c.state && <tr className="stateh"><td colSpan={16}>{c.state}</td></tr>}
+                  {prev !== c.state && <tr className="stateh"><td colSpan={18}>{c.state}</td></tr>}
                   <tr className={(drag === i ? "dragging" : "") + (over === i && drag !== null && drag !== i ? " over" : "")} draggable
                     onDragStart={() => setDrag(i)} onDragOver={(e) => { e.preventDefault(); setOver(i); }} onDragLeave={() => setOver(null)}
                     onDrop={() => { if (drag !== null) move(drag, i); setDrag(null); setOver(null); }} onDragEnd={() => { setDrag(null); setOver(null); }}>
@@ -603,6 +607,8 @@ export default function Page() {
                     <td><span className={"vtag v-" + verdictKey(v.verdict)} title={v.headline}>{v.verdict}</span></td>
                     <td><span className={"pill " + ch.k} title={ch.t}>{ch.short}</span></td>
                     <td><div className="plabels mini">{priorityLabels(c).map((l) => <span key={l.n} className={"pl " + l.level} title={`${l.n}. ${l.key}: ${l.tip}`}>{l.n}·{l.label}</span>)}</div></td>
+                    <td className={"num " + cellCls(r1_26(c, s.cat))}>{fmt(r1_26(c, s.cat))}</td>
+                    <td className={"num " + cellCls(predR2(c, s.cat))}>{fmt(predR2(c, s.cat))}</td>
                     {roundClose(c, "2025", s.cat).map((x, j) => <td key={j} className={"num " + cellCls(x)}>{fmt(x)}</td>)}
                     <td title={fee(c) ?? ""}>{money(fee(c)) ?? "?"}</td>
                     <td title={stipend(c) ?? ""}>{money(stipend(c)) ?? "?"}</td>
@@ -713,17 +719,18 @@ export default function Page() {
               <p className="muted small">Maharashtra first, then the other states in the order given. Green = good · blue = OK · amber = caution · red = problem · grey = nothing found online. Blank = not found, not "no". Click a college name for sources.</p>
             </section>
             <div className="ltwrap sheetwrap"><table className="lt sheet">
-              <colgroup>{[13, 13, 7, 7, 8, 7, 11, 11, 10, 7, 6].map((w, i) => <col key={i} style={{ width: w + "%" }} />)}</colgroup>
+              <colgroup>{[13, 12, 7, 6, 6, 8, 7, 10, 10, 9, 6, 6].map((w, i) => <col key={i} style={{ width: w + "%" }} />)}</colgroup>
               <thead>
-                <tr><th>College</th><th>Verdict · where to place it</th><th>Chance</th><th className="num">2025 closing</th><th>Bond</th><th>Stipend</th><th>Multispeciality exposure</th><th>Hands on</th><th>Toxicity <span className="muted">(resignations / suicides / deaths)</span></th><th>Working hours / day</th><th>ICU posting hrs / week</th></tr>
+                <tr><th>College</th><th>Verdict · where to place it</th><th>Chance</th><th className="num">2026 R1</th><th className="num">2025 closing</th><th>Bond</th><th>Stipend</th><th>Multispeciality exposure</th><th>Hands on</th><th>Toxicity <span className="muted">(resignations / suicides / deaths)</span></th><th>Working hours / day</th><th>ICU posting hrs / week</th></tr>
               </thead>
               <tbody>{SHEET_STATES.map((st) => (<Fragment key={st}>
-                <tr className="stateh"><td colSpan={11}>{st}</td></tr>
+                <tr className="stateh"><td colSpan={12}>{st}</td></tr>
                 {SHEET.filter((x) => x.state === st).map((row) => { const c = row.id ? BY_ID.get(row.id) : null; const d = c ? sheetRow(c) : null; const L = c ? priorityLabels(c) : null; const v = c ? verdictOf(c) : null; const ch = c ? chance(c, s.air, s.cat) : null; return (
                   <tr key={row.given}>
                     <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{row.given}</b> : <b className="muted">{row.given}</b>}<small>{c ? `${shortName(c)} · ${typeLabel(c)}` : "not in app data"}</small>{c && <div className="rowacts">{addTo(c.id)}<button className={"heart" + (saved.includes(c.id) ? " on" : "")} title={saved.includes(c.id) ? "In wishlist — tap to remove" : "Add to wishlist"} onClick={() => toggleSave(c.id)}>{saved.includes(c.id) ? "♥" : "♡"}</button></div>}</td>
                     <td>{v && <><span className={"vtag v-" + verdictKey(v.verdict)} title={v.headline}>{v.verdict}</span><br /><small className={"r-" + REC_KEY[recommendation(c!).rec]} style={{ padding: "1px 6px", borderRadius: 6 }}>{placeText(c!)}</small><div className="small muted" style={{ marginTop: 4, maxWidth: 220 }}>{v.headline}</div></>}</td>
                     <td>{ch && <><span className={"pill " + ch.k} title={ch.t}>{ch.short}</span><div className="small muted" style={{ marginTop: 4 }}>{CHANCE_TEXT[ch.k]}</div></>}</td>
+                    <td className={"num " + (c ? cellCls(r1_26(c, s.cat)) : "")}>{c ? fmt(r1_26(c, s.cat)) : ""}</td>
                     <td className={"num " + (c ? cellCls(deepest(c, "2025", s.cat) || null) : "")}>{c ? fmt(deepest(c, "2025", s.cat)) : ""}</td>
                     {d ? (<>
                       {cell(L![4], d.bond, row.given + "b")}<td className="small cell-text">{d.stipend}</td>
@@ -732,6 +739,76 @@ export default function Page() {
                     </>) : (() => { const t = SHEET_SHORT["given:" + row.given]; return <><td /><td /><td /><td />{cell(null, t?.tox ?? "", row.given + "t")}{cell(null, t?.hours ?? "", row.given + "w")}{cell(null, t?.icu ?? "", row.given + "i")}</>; })()}
                   </tr>); })}
               </Fragment>))}</tbody></table></div>
+          </div>);
+      })()}
+
+      {tab === "r1" && (() => {
+        const A = LOCK.air, mine = new Set(LOCK.choices.map((o) => o.id));
+        // Outlook for a later round: 2025 history first (did it ever reach her AIR?), else distance of this year's R1 closing.
+        const outlook = (o: { id: string | null; r1: number | null }) => {
+          const c = o.id ? BY_ID.get(o.id) : null; const d25 = c ? deepest(c, "2025", LOCK.cat) : 0; const r = o.r1 ?? 0;
+          if (d25 >= A) return { k: "good", t: `Realistic — 2025 reached ${fmt(d25)} by ${firstRound(c!, "2025", LOCK.cat, A)}` };
+          if (r >= A * 0.85) return { k: "ok", t: "Possible — R1 within 15%" };
+          if (r >= A * 0.7) return { k: "mid", t: "Long shot — R1 15–30% short" };
+          return { k: "bad", t: "Out of reach" };
+        };
+        const rows = LOCK.choices.map((o) => ({ o, c: o.id ? BY_ID.get(o.id) : undefined, ol: outlook(o) }));
+        const n = (k: string) => rows.filter((r) => r.ol.k === k).length;
+        const add = COLLEGES.filter((c) => c.counselling === "MCC" && c.kind !== "deemed" && !mine.has(c.id) && verdictOf(c).verdict !== "Avoid" && (deepest(c, "2025", LOCK.cat) >= A || (r1_26(c, LOCK.cat) ?? 0) >= A * 0.85))
+          .sort((a, b) => deepest(b, "2025", LOCK.cat) - deepest(a, "2025", LOCK.cat));
+        const R2 = "r2", r2 = s.lists.find((l) => l.id === R2);
+        // Round 2 order: her R1 order (dream picks cost nothing), then the suggested adds, hardest (lowest predicted R2) first.
+        const startR2 = () => { if (r2 && !confirm("Replace the existing Round 2 list?")) return; up({ lists: [{ id: R2, name: "Round 2 choices", items: [...LOCK.choices.flatMap((o) => (o.id ? [o.id] : [])), ...[...add].sort((a, b) => (predR2(a, LOCK.cat) ?? 9e9) - (predR2(b, LOCK.cat) ?? 9e9)).map((c) => c.id)].filter((x, i, a) => a.indexOf(x) === i) }, ...s.lists.filter((l) => l.id !== R2)], active: R2 }); setTab("lists"); };
+        const toggleR2 = (id: string) => { const cur = r2?.items ?? LOCK.choices.flatMap((o) => (o.id ? [o.id] : [])); up({ lists: [{ id: R2, name: "Round 2 choices", items: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] }, ...s.lists.filter((l) => l.id !== R2)] }); };
+        const r2btn = (id: string) => { const on = !!r2?.items.includes(id); return <button className={on ? "on" : ""} onClick={() => toggleR2(id)} title={on ? "Remove from Round 2 list" : "Add to the end of the Round 2 list"}>{on ? "✓ In R2" : "+ Round 2"}</button>; };
+        const useLock = () => { const id = "lock-r1"; up({ lists: [{ id, name: "Her R1 lock list (21 Oct)", items: LOCK.choices.flatMap((o) => (o.id ? [o.id] : [])) }, ...s.lists.filter((l) => l.id !== id)], active: id }); setTab("lists"); };
+        return (
+          <div className="decide">
+            <section className="panel">
+              <h2>Round 1 — her locked list vs the result</h2>
+              <p>AIR <b>{fmt(A)}</b> · OBC-NCL · {LOCK.choices.length} choices locked {LOCK.locked} · <b>Not allotted in Round 1</b> (her AIR is not in the MCC R1 result).</p>
+              {(() => { const yr = (y: string) => LOCK.choices.map((o) => (o.id ? roundClose(BY_ID.get(o.id)!, y, LOCK.cat)[0] : null)); const r26 = LOCK.choices.map((o) => o.id ? r1_26(BY_ID.get(o.id)!, LOCK.cat) : null);
+                const st = (v: (number | null)[]) => { const x = v.filter((n): n is number => !!n).sort((a, b) => a - b); return { n: x.length, med: x[x.length >> 1], max: x[x.length - 1], hit: x.filter((n) => n >= A).length }; };
+                const rows: [string, ReturnType<typeof st>][] = [["2026 R1", st(r26)], ["2025 R1", st(yr("2025"))], ["2024 R1", st(yr("2024"))]];
+                return <><h4>Round 1 across years — her {LOCK.choices.filter((o) => o.id).length} choices with app data</h4>
+                  <table className="rk"><thead><tr><th></th><th>Seats with R1 data</th><th>Median closing</th><th>Deepest closing</th><th>Reached {fmt(A)}</th></tr></thead>
+                    <tbody>{rows.map(([y, v]) => <tr key={y}><th>{y}</th><td>{v.n}</td><td>{fmt(v.med)}</td><td>{fmt(v.max)}</td><td>{v.hit}</td></tr>)}</tbody></table>
+                  <p className="muted small">Round 1 never reached her rank on these seats in any year — her seats historically open up from R2/R3/Stray.</p></>; })()}
+              <h4>Verdict</h4>
+              <ul>
+                <li><b>The list itself was not the problem.</b> No Open/OBC Anaesthesia seat in her list — or any govt/DNB seat outside it — closed at or beyond {fmt(A)} in R1. The deepest govt/DNB closing anywhere was ~36,400. The only seats that went past her rank were deemed-university paid seats.</li>
+                <li><b>The order is right:</b> Mumbai/Maharashtra govt dream picks first, Delhi/north next, DNB backups last. Counselling gives the highest choice still free, so the dream picks cost nothing — keep them.</li>
+                <li><b>But only {n("good") + n("ok")} of {LOCK.choices.length} choices are realistic</b> ({n("good")} reached 42k+ in 2025, {n("ok")} came within 15% in R1), and all sit at #172–#291. {n("bad")} are out of reach on any data. Her R2 chance rests on those few DNB seats — the list needs more of them.</li>
+                <li><b>2026 is running deeper than 2025:</b> 223 of 243 colleges closed later in 2026 R1 than in 2025 R1. That helps the bottom of her list in R2/R3.</li>
+                <li><b>For Round 2:</b> keep the top as is; add the {add.length} seats below that reached her rank in 2025 (or are close in R1) and aren't marked “Avoid”; decide on deemed paid seats only as a budget call (KMC Manipal 45,083, Hamdard 48,224, KMC Mangalore 53,423 in R1 — fees ₹20 L+/yr). Re-check whether MCC carries R1 choices into R2.</li>
+              </ul>
+              <p><button onClick={startR2}><b>{r2 ? "Rebuild" : "Create"} Round 2 list</b></button> <span className="muted small">her R1 order + the {add.length} suggested adds (hardest first){r2 ? ` · current Round 2 list: ${r2.items.length} choices` : ""}. Reorder / add more in My list, or with “+ Round 2” below and “+ Add to list” anywhere.</span></p>
+              <p><button onClick={useLock}>Open her list in “My list”</button> <span className="muted small">(the {LOCK.choices.filter((o) => o.id).length} choices the app has data for, in her order)</span></p>
+            </section>
+            <section className="panel">
+              <h3>Add for Round 2 — reached her rank in 2025 or close in R1, not in her list, not “Avoid” ({add.length})</h3>
+              <div className="ltwrap"><table className="lt"><thead><tr><th>College</th><th>State</th><th>Type</th><th>Verdict</th><th className="num">2026 R1</th><th className="num">Pred. R2</th><th className="num">2025 deepest</th><th></th></tr></thead>
+                <tbody>{add.map((c) => <tr key={c.id}><td className="cn"><b onClick={() => setOpen(c.id)}>{shortName(c)}</b></td><td>{c.state}</td><td className="small">{typeLabel(c)}</td><td><span className={"vtag v-" + verdictKey(verdictOf(c).verdict)}>{verdictOf(c).verdict}</span></td>
+                  <td className="num">{fmt(r1_26(c, LOCK.cat))}</td><td className={"num " + cellCls(predR2(c, LOCK.cat))}>{fmt(predR2(c, LOCK.cat))}</td><td className="num hit">{fmt(deepest(c, "2025", LOCK.cat))}</td><td>{r2btn(c.id)}</td></tr>)}</tbody></table></div>
+            </section>
+            <section className="panel">
+              <h3>Her {LOCK.choices.length} choices, in her order</h3>
+              <p className="muted small">R1 = highest Open/OBC AIR allotted there in 2026 Round 1 (non-PwD). 2025 columns and verdict only where the app has the college ({LOCK.choices.filter((o) => o.id).length}/{LOCK.choices.length}). Realistic {n("good")} · Possible {n("ok")} · Long shot {n("mid")} · Out of reach {n("bad")}.</p>
+              <div className="ltwrap"><table className="lt"><thead><tr><th>#</th><th>College</th><th>Seat</th><th className="num">2026 R1</th><th className="num">Short by</th><th className="num">Pred. R2</th><th className="num">2025 R1</th><th className="num">2024 R1</th><th className="num">2025 deepest</th><th>Verdict</th><th>Later-round outlook</th><th></th></tr></thead>
+                <tbody>{rows.map(({ o, c, ol }) => <tr key={o.n}><td>{o.n}</td>
+                  <td className="cn">{c ? <b onClick={() => setOpen(c.id)}>{shortName(c)}</b> : <b className="muted">{o.name.split(",").slice(0, 2).join(",")}</b>}</td>
+                  <td className="small">{o.ct === "DNB" ? "DNB" : "MD · AIQ"}</td>
+                  <td className="num">{fmt(o.r1)}</td><td className="num">{o.r1 ? fmt(A - o.r1) : "—"}</td><td className={"num " + (c ? cellCls(predR2(c, LOCK.cat)) : "")}>{c ? fmt(predR2(c, LOCK.cat)) : ""}</td>
+                  <td className="num">{c ? fmt(roundClose(c, "2025", LOCK.cat)[0]) : ""}</td><td className="num">{c ? fmt(roundClose(c, "2024", LOCK.cat)[0]) : ""}</td>
+                  <td className={"num " + (c ? cellCls(deepest(c, "2025", LOCK.cat) || null) : "")}>{c ? fmt(deepest(c, "2025", LOCK.cat)) : ""}</td>
+                  <td>{c && <span className={"vtag v-" + verdictKey(verdictOf(c).verdict)}>{verdictOf(c).verdict}</span>}</td>
+                  <td><span className={"pill " + ol.k}>{ol.t}</span></td><td>{c && r2btn(c.id)}</td></tr>)}</tbody></table></div>
+            </section>
+            <section className="panel">
+              <h3>Seats not in her list that closed ≥ 34,000 in R1 ({LOCK.outside.length})</h3>
+              <div className="ltwrap"><table className="lt"><thead><tr><th>College</th><th>Quota</th><th className="num">2026 R1</th></tr></thead>
+                <tbody>{LOCK.outside.map((e) => <tr key={e.name + e.ct}><td className="cn">{e.id ? <b onClick={() => setOpen(e.id!)}>{shortName(BY_ID.get(e.id)!)}</b> : <b className="muted">{e.name.split(",").slice(0, 2).join(",")}</b>}</td><td className="small">{e.quota}{e.ct === "DNB" ? "" : " · MD"}</td><td className={"num " + (e.r1 >= A ? "hit" : "")}>{fmt(e.r1)}</td></tr>)}</tbody></table></div>
+            </section>
           </div>);
       })()}
 
@@ -787,7 +864,7 @@ export default function Page() {
       {open && BY_ID.get(open) && drawer(BY_ID.get(open)!)}
 
       <footer className="muted small foot">
-        Cutoffs: official MCC & Maharashtra CET Cell result PDFs (2024–25). Online research: web, news & forum sources — forum = anecdotal. Past cutoffs never guarantee a 2026 seat. Bonds are 2025 rules; re-check 2026 brochures. Your data stays in this browser — use Backup.
+        Cutoffs: official MCC & Maharashtra CET Cell result PDFs (2024–25) + MCC 2026 Round 1 (23 Oct 2026, AIQ/DNB/deemed only). Online research: web, news & forum sources — forum = anecdotal. Past cutoffs never guarantee a 2026 seat. Bonds are 2025 rules; re-check 2026 brochures. Your data stays in this browser — use Backup.
       </footer>
     </main>
   );
