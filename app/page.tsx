@@ -588,7 +588,7 @@ export default function Page() {
         </div>
         {listView === "rows" && list.items.length > 0 && (
           <div className="ltwrap"><table className="lt">
-            <thead><tr><th></th><th>#</th><th>College</th><th>Type</th><th>Verdict</th><th>Chance</th><th>5 priorities</th><th className="num">2026 R1</th><th className="num">Pred. R2</th><th className="num">2025 R1</th><th className="num">R2</th><th className="num">R3</th><th className="num">Stray</th><th>Fee / yr</th><th>Stipend</th><th>Bond</th><th className="num">Score</th><th></th></tr></thead>
+            <thead><tr><th></th><th>#</th><th>College</th><th>Type</th><th>Verdict</th><th>Chance</th><th>5 priorities</th><th className="num">2026 R1</th><th className="num">Pred. R2</th><th className="num">2025 R1</th><th className="num">R2</th><th className="num">R3</th><th className="num">Stray</th><th className="num">2024 R1</th><th className="num">2024 deepest</th><th>Fee / yr</th><th>Stipend</th><th>Bond</th><th className="num">Score</th><th></th></tr></thead>
             <tbody>
               {list.items.map((id, i) => {
                 const c = BY_ID.get(id); if (!c) return null;
@@ -596,7 +596,7 @@ export default function Page() {
                 if ((lf.state.length && !lf.state.includes(c.state)) || (lf.kind.length && !lf.kind.includes(c.kind)) || (lf.verdict.length && !lf.verdict.includes(v.verdict)) || (lf.chance.length && !lf.chance.includes(ch.k)) || (lf.min && deepest(c, "2025", s.cat) < +lf.min) || (lf.max && deepest(c, "2025", s.cat) > +lf.max)) return null;
                 const ex = excludedBy(c, prefs);
                 return (<Fragment key={id}>
-                  {prev !== c.state && <tr className="stateh"><td colSpan={18}>{c.state}</td></tr>}
+                  {prev !== c.state && <tr className="stateh"><td colSpan={20}>{c.state}</td></tr>}
                   <tr className={(drag === i ? "dragging" : "") + (over === i && drag !== null && drag !== i ? " over" : "")} draggable
                     onDragStart={() => setDrag(i)} onDragOver={(e) => { e.preventDefault(); setOver(i); }} onDragLeave={() => setOver(null)}
                     onDrop={() => { if (drag !== null) move(drag, i); setDrag(null); setOver(null); }} onDragEnd={() => { setDrag(null); setOver(null); }}>
@@ -610,6 +610,8 @@ export default function Page() {
                     <td className={"num " + cellCls(r1_26(c, s.cat))}>{fmt(r1_26(c, s.cat))}</td>
                     <td className={"num " + cellCls(predR2(c, s.cat))}>{fmt(predR2(c, s.cat))}</td>
                     {roundClose(c, "2025", s.cat).map((x, j) => <td key={j} className={"num " + cellCls(x)}>{fmt(x)}</td>)}
+                    <td className={"num " + cellCls(roundClose(c, "2024", s.cat)[0])}>{fmt(roundClose(c, "2024", s.cat)[0])}</td>
+                    <td className={"num " + cellCls(deepest(c, "2024", s.cat) || null)}>{fmt(deepest(c, "2024", s.cat))}</td>
                     <td title={fee(c) ?? ""}>{money(fee(c)) ?? "?"}</td>
                     <td title={stipend(c) ?? ""}>{money(stipend(c)) ?? "?"}</td>
                     <td className="bond" title={bondShort(c)}>{bondShort(c)}</td>
@@ -778,7 +780,9 @@ export default function Page() {
               <ul>
                 <li><b>The list itself was not the problem.</b> No Open/OBC Anaesthesia seat in her list — or any govt/DNB seat outside it — closed at or beyond {fmt(A)} in R1. The deepest govt/DNB closing anywhere was ~36,400. The only seats that went past her rank were deemed-university paid seats.</li>
                 <li><b>The order is right:</b> Mumbai/Maharashtra govt dream picks first, Delhi/north next, DNB backups last. Counselling gives the highest choice still free, so the dream picks cost nothing — keep them.</li>
-                <li><b>But only {n("good") + n("ok")} of {LOCK.choices.length} choices are realistic</b> ({n("good")} reached 42k+ in 2025, {n("ok")} came within 15% in R1), and all sit at #172–#291. {n("bad")} are out of reach on any data. Her R2 chance rests on those few DNB seats — the list needs more of them.</li>
+                <li><b>But only {n("good") + n("ok")} of {LOCK.choices.length} choices are realistic</b> ({n("good")} reached 42k+ in 2025, {n("ok")} came within 15% in R1), and all sit at #{Math.min(...rows.filter((r) => r.ol.k === "good" || r.ol.k === "ok").map((r) => r.o.n))}–#{Math.max(...rows.filter((r) => r.ol.k === "good" || r.ol.k === "ok").map((r) => r.o.n))}. {n("bad")} are out of reach on any data. Her R2 chance rests on those few DNB seats — the list needs more of them.</li>
+                {(() => { const av = rows.filter((r) => r.c && verdictOf(r.c).verdict === "Avoid"); return av.length ? <li><b>{av.length} of her choices are marked “Avoid”</b> ({av.map((r) => `#${r.o.n} ${shortName(r.c!)}`).join(", ")}) — drop them unless seniors say otherwise; if one is allotted it blocks lower choices.</li> : null; })()}
+                <li className="muted small">Research for the 228 colleges added after her lock list is light (mostly 1–2 web searches each, aggregator sources) — most verdicts are Low confidence; check the detail panel's sources before relying on one.</li>
                 <li><b>2026 is running deeper than 2025:</b> 223 of 243 colleges closed later in 2026 R1 than in 2025 R1. That helps the bottom of her list in R2/R3.</li>
                 <li><b>For Round 2:</b> keep the top as is; add the {add.length} seats below that reached her rank in 2025 (or are close in R1) and aren't marked “Avoid”; decide on deemed paid seats only as a budget call (KMC Manipal 45,083, Hamdard 48,224, KMC Mangalore 53,423 in R1 — fees ₹20 L+/yr). Re-check whether MCC carries R1 choices into R2.</li>
               </ul>
